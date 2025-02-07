@@ -32,7 +32,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-# AUTH_USER_MODEL = 'shop_ease_api.Users'
+AUTH_USER_MODEL = 'users.User'
 
 # Application definition
 
