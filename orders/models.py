@@ -1,8 +1,7 @@
-from django.db import models
 import uuid
+from django.db import models
 from django.conf import settings
 from products.models import Product
-
 
 class Order(models.Model):
     STATUS_CHOICES = [
