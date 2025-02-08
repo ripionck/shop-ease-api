@@ -7,6 +7,7 @@ class CustomUserAdmin(UserAdmin):
     model = User
     ordering = ('email',)
     list_display = ('email', 'role', 'is_staff', 'is_active')
+    search_fields = ('email',)  
     
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
