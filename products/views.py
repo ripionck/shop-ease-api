@@ -129,11 +129,11 @@ class ReviewView(APIView):
     def get(self, request, product_id):
         reviews = Review.objects.filter(product_id=product_id)
         serializer = ReviewSerializer(reviews, many=True)
-        return Response(serializer.data)
+        return Response({'reviews': serializer.data}, status=status.HTTP_200_OK)
     
     def post(self, request, product_id):
         product = get_object_or_404(Product, pk=product_id)
-        serializer = ReviewSerializer(data=request.data)
+        serializer = ReviewSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save(product=product)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
