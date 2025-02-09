@@ -1,22 +1,30 @@
-from itertools import product
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from django.shortcuts import get_object_or_404
-
-import products
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .models import *
 from .serializers import *
 
 
 class CategoryView(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     def get(self, request):
-        categories = Category.objects.filter(parent_category__isnull = True)
+        queryset = Category.objects.filter(parent_category__isnull=True)
+        total = queryset.count()
+        skip = int(request.query_params.get('skip', 0))
+        limit = int(request.query_params.get('limit', 30))
+        categories = queryset[skip:skip + limit]
         serializer = CategorySerializer(categories, many=True)
-        return Response(serializer.data)
+        return Response({
+            "categories": serializer.data,
+            "total": total,
+            "skip": skip,
+            "limit": limit,
+        })
     
     def post(self, request):
         serializer =CategorySerializer(data=request.data)
@@ -40,13 +48,26 @@ class CategoryView(APIView):
     
 class ProductView(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get(self, request):
-        products = Product.objects.all()
+        queryset = Product.objects.all()
+        total = queryset.count()
+        skip = int(request.query_params.get('skip', 0))
+        limit = int(request.query_params.get('limit', 30))
+        products = queryset[skip:skip + limit]
         serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data)
+        return Response({
+            "products": serializer.data,
+            "total": total,
+            "skip": skip,
+            "limit": limit
+        })
+    
     
     def post(self, request):
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return Response({'detail': 'Only admin can create product.'}, status=status.HTTP_403_FORBIDDEN)
         serializer = ProductSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -65,6 +86,8 @@ class ProductDetailView(APIView):
         return Response(serializer.data)
     
     def put(self, request, pk):
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return Response({'detail': 'Only admin can update product.'}, status=status.HTTP_403_FORBIDDEN)
         product = self.get_object(pk)
         serializer = ProductSerializer(product, data=request.data, partial=True)
         if serializer.is_valid():
@@ -72,13 +95,17 @@ class ProductDetailView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    
     def delete(self, request, pk):
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return Response({'detail': 'Only admin can delete product.'}, status=status.HTTP_403_FORBIDDEN)
         product = self.get_object(pk)
         product.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({"message": "Product deleted successfully."}, status=status.HTTP_200_OK)
     
 class ProductImageView(APIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, product_id):
         product = get_object_or_404(Product, pk=product_id)

@@ -47,20 +47,31 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'image', 'is_main']
         read_only_fields = ['id']
 
+from django.shortcuts import get_object_or_404
+
 class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
     main_image = serializers.ImageField(write_only=True, required=False)
-    category = serializers.PrimaryKeyRelatedField(queryset = Category.objects.all())
-    subcategory = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), required=False)
+    category_id = serializers.UUIDField(write_only=True)
+    category = CategorySerializer(read_only=True)
 
     class Meta:
         model = Product
-        fields = ['id', 'name', 'description', 'price', 'discounted_price', 'category', 'subcategory', 'main_image', 'images', 'brand', 'stock', 'rating', 'features', 'specifications', 'tags', 'created_at', 'updated_at']
+        fields = [
+            'id', 'name', 'description', 'price', 'discounted_price',
+            'category_id', 'category', 'main_image', 'images', 'brand',
+            'stock', 'rating', 'features', 'specifications', 'tags',
+            'created_at', 'updated_at'
+        ]
         read_only_fields = ['rating', 'created_at', 'updated_at']
 
-    def create(self, validate_data):
-        main_image = validate_data.pop('main_image', None)
-        product = super().create(validate_data)
+    def create(self, validated_data):
+        main_image = validated_data.pop('main_image', None)
+        category_uuid = validated_data.pop('category_id')
+        category = get_object_or_404(Category, id=category_uuid)
+        validated_data['category'] = category
+
+        product = super().create(validated_data)
 
         if main_image:
             ProductImage.objects.create(
@@ -68,6 +79,13 @@ class ProductSerializer(serializers.ModelSerializer):
                 image=main_image,
                 is_main=True
             )
+        
+        return product
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        return ret
+
 
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
