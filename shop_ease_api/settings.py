@@ -52,7 +52,6 @@ INSTALLED_APPS = [
     'cloudinary',
     'cloudinary_storage',
 
-    'core',
     'users',
     'products',
     'orders',
