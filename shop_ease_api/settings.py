@@ -34,6 +34,9 @@ ALLOWED_HOSTS = []
 
 AUTH_USER_MODEL = 'users.User'
 
+APPEND_SLASH = False
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -92,7 +95,9 @@ WSGI_APPLICATION = 'shop_ease_api.wsgi.application'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
 }
 
 CLOUDINARY_STORAGE = {
