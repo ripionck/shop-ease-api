@@ -2,8 +2,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from .models import Order, OrderItem
-from .serializers import OrderSerializer, OrderItemSerializer
+from .models import Order
+from .serializers import OrderSerializer
+from django.conf import settings 
+from django.template.loader import render_to_string 
+from django.core.mail import send_mail
 
 class OrderListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -31,7 +34,25 @@ class CreateOrderView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = OrderSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            order = serializer.save()
+
+            try:
+                # ... (email sending logic )
+                subject = "Your Order Confirmation"
+                html_message = render_to_string('orders/templates/order_confirmation_email.html', {'order': order})
+                plain_message = render_to_string('orders/templates/order_confirmation_email.txt', {'order': order})
+
+                send_mail(
+                    subject,
+                    plain_message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [order.user.email],
+                    html_message=html_message
+                )
+                print("Email Sent")
+            except Exception as e:
+                print(f"Error sending confirmation email: {e}")
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

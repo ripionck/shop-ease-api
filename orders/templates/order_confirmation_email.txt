@@ -1,0 +1,14 @@
+Thank you for your order!
+
+Dear {{ order.user.username }},
+
+Your order (ID: {{ order.id }}) has been confirmed.
+
+Order details:
+{% for item in order.orderitem_set.all %}
+    {{ item.product.name }} x {{ item.quantity }}
+{% endfor %}
+
+Total: ${{ order.total }}
+
+Thank you for shopping with us!
