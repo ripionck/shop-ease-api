@@ -163,8 +163,23 @@ class ReviewView(APIView):
     
     def post(self, request, product_id):
         product = get_object_or_404(Product, pk=product_id)
-        serializer = ReviewSerializer(data=request.data, context={'request': request})
+        serializer = ReviewSerializer(data=request.data, context={'request': request, 'product': product})
         if serializer.is_valid():
-            serializer.save(product=product)
+            review = serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class ReviewDetailView(APIView):
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_object(self, review_id):
+        return get_object_or_404(Review, pk=review_id)
+
+    def delete(self, request, review_id):
+        review = self.get_object(review_id)
+        # Allow deletion if user is admin or the owner of the review.
+        if not request.user.is_staff and review.user != request.user:
+            return Response({'detail': 'Permission denied.'},
+                            status=status.HTTP_403_FORBIDDEN)
+        review.delete()
+        return Response({'message': 'Review deleted successfully.'}, status=status.HTTP_200_OK)
