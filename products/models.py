@@ -2,6 +2,9 @@ import uuid
 from django.db import models
 from django.conf import settings
 from cloudinary.models import CloudinaryField
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+import cloudinary.uploader
 
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -77,3 +80,9 @@ class Review(models.Model):
     class Meta:
         verbose_name = "Review"
         verbose_name_plural = "Reviews"
+
+
+@receiver(post_delete, sender=ProductImage)
+def delete_product_image_from_cloudinary(sender, instance, **kwargs):
+    if instance.image and hasattr(instance.image, 'public_id'):
+        cloudinary.uploader.destroy(instance.image.public_id)

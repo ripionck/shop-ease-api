@@ -43,10 +43,14 @@ class CategorySerializer(serializers.ModelSerializer):
         return instance
     
 class ProductImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = ProductImage
-        fields = ['id', 'image', 'is_main']
-        read_only_fields = ['id']
+        fields = ['id', 'image_url', 'is_main']
+
+    def get_image_url(self, obj):
+        return obj.image.url
 
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:

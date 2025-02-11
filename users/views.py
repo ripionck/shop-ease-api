@@ -49,3 +49,4 @@ class UserProfileView(APIView):
     def delete(self, request, format=None):
         request.user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    

@@ -27,13 +27,17 @@ class CategoryView(APIView):
         })
     
     def post(self, request):
-        serializer =CategorySerializer(data=request.data)
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return Response({'detail': 'Only admin can create category.'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = CategorySerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def put(self, request, pk):
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return Response({'detail': 'Only admin can update category.'}, status=status.HTTP_403_FORBIDDEN)
         category = get_object_or_404(Category, pk=pk)
         serializer = CategorySerializer(category, data=request.data)
         if serializer.is_valid():
@@ -42,6 +46,8 @@ class CategoryView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self, request, pk):
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return Response({'detail': 'Only admin can delete category.'}, status=status.HTTP_403_FORBIDDEN)
         category = get_object_or_404(Category, pk=pk)
         category.delete()
         return Response({"message": "Category deleted successfully."}, status=status.HTTP_200_OK)
@@ -63,61 +69,85 @@ class ProductView(APIView):
             "skip": skip,
             "limit": limit
         })
-    
-    
+
     def post(self, request):
         if not request.user.is_authenticated or not request.user.is_staff:
-            return Response({'detail': 'Only admin can create product.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {'detail': 'Only admin can create product.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         serializer = ProductSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
+
 class ProductDetailView(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get_object(self, pk):
         return get_object_or_404(Product, pk=pk)
-    
+
     def get(self, request, pk):
         product = self.get_object(pk)
         serializer = ProductSerializer(product)
         return Response(serializer.data)
-    
+
     def put(self, request, pk):
         if not request.user.is_authenticated or not request.user.is_staff:
-            return Response({'detail': 'Only admin can update product.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {'detail': 'Only admin can update product.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         product = self.get_object(pk)
         serializer = ProductSerializer(product, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    
+
     def delete(self, request, pk):
         if not request.user.is_authenticated or not request.user.is_staff:
-            return Response({'detail': 'Only admin can delete product.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {'detail': 'Only admin can delete product.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         product = self.get_object(pk)
         product.delete()
-        return Response({"message": "Product deleted successfully."}, status=status.HTTP_200_OK)
+        return Response(
+            {"message": "Product deleted successfully."},
+            status=status.HTTP_200_OK
+        )
+    
     
 class ProductImageView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, product_id):
+        if not request.user.is_staff:
+            return Response(
+                {'detail': 'Only admin can add product image.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         product = get_object_or_404(Product, pk=product_id)
         image = request.FILES.get('image')
-
         if not image:
-            return Response({'error':'No image provided'}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response({'error': 'No image provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if admin wants this image to be main.
+        # The "is_main" option can be provided in the payload (as a boolean value or string)
+        is_main = request.data.get('is_main', 'false').lower() == 'true'
+        if is_main:
+            # Unset any current main image for this product.
+            ProductImage.objects.filter(product=product, is_main=True).update(is_main=False)
+
         product_image = ProductImage.objects.create(
             product=product,
             image=image,
-            is_main=False
+            is_main=is_main
         )
 
         return Response(ProductImageSerializer(product_image).data, status=status.HTTP_201_CREATED)
