@@ -21,12 +21,13 @@ class WishlistSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
 
     def get_products(self, obj):
-        return [
-            {
+        product_data = []
+        for product in obj.products.all():  
+            main_image = product.images.filter(is_main=True).first() 
+            product_data.append({
                 "id": product.id,
                 "name": product.name,
                 "price": product.price,
-                "thumbnail": product.main_image if product else None
-            }
-            for product in obj.products.all()
-        ]
+                "thumbnail": main_image.image.url if main_image else None  
+            })
+        return product_data
