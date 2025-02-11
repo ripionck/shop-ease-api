@@ -1,45 +1,46 @@
 from rest_framework import serializers
 from products.models import Product
 from .models import Order, OrderItem
-from decimal import Decimal
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all()) 
 
     class Meta:
         model = OrderItem
-        fields = ['id', 'product', 'quantity', 'price']
-        read_only_fields = ['id', 'price']
+        fields = ['product', 'quantity', 'price']
 
 class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True, write_only=True)
+    items = OrderItemSerializer(many=True, read_only=False)
+    total_amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    shipping = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    tax = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    shipping_address = serializers.JSONField()
     user = serializers.HiddenField(default=serializers.CurrentUserDefault())
-    subtotal = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)  
-    shipping = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
-    tax = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
-    total = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)    
 
     class Meta:
         model = Order
-        fields = ['id', 'user', 'items', 'subtotal', 'shipping', 'tax', 'total', 'status', 'shipping_address', 'payment_method', 'created_at', 'updated_at']  
-        read_only_fields = ['id', 'subtotal', 'total', 'created_at', 'updated_at', 'status']
+        fields = ['id', 'user', 'items', 'total_amount', 'status', 'shipping', 'tax', 'shipping_address', 'payment_method', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
     def create(self, validated_data):
+        user = self.context['user']
         items_data = validated_data.pop('items')
-        shipping_address = validated_data.pop('shipping_address')
-        shipping = validated_data.pop('shipping')
-        tax = validated_data.pop('tax')
-        order = Order.objects.create(shipping_address=shipping_address, shipping=shipping, tax=tax, **validated_data) 
+        order = Order.objects.create(**validated_data)
 
-        subtotal = Decimal(0)
+        total_amount = 0
         for item_data in items_data:
-            product = item_data['product']
+            product_id = item_data['product']['product_id']
+            try:
+                product = Product.objects.get(id=product_id)
+            except Product.DoesNotExist:
+                raise serializers.ValidationError(f"Product with ID {product_id} not found.")
+
             quantity = item_data['quantity']
             price = product.price
             OrderItem.objects.create(order=order, product=product, quantity=quantity, price=price)
-            subtotal += Decimal(price) * Decimal(quantity)
+            total_amount += quantity * price
 
-        order.subtotal = subtotal
-        order.total = subtotal + shipping + tax 
+        order.total_amount = total_amount
         order.save()
         return order
+

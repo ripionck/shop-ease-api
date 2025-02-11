@@ -10,43 +10,31 @@ from django.core.mail import send_mail
 
     
 class CreateOrderView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        shipping_address = request.data.get('shipping_address', {})
-        if isinstance(shipping_address, dict):
-            request.data['shipping_address'] = shipping_address
-
-        cart_data = request.data.get('cart', {})
+    def post(self, request):
+        cart_data = request.data.get('cart')
         if not cart_data:
-            return Response({"error": "Cart data is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Cart data is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         order_data = {
-            'items': [],
-            'shipping_address': shipping_address,
-            'payment_method': request.data.get('payment_method'),
-            'shipping': request.data.get('shipping'),  
-            'tax': request.data.get('tax')        
+            "shipping_address": request.data.get('shipping_address'),
+            "payment_method": request.data.get('payment_method'),
+            "items": [],
         }
+        if request.data.get('shipping'):
+            order_data['shipping'] = request.data.get('shipping')
+        if request.data.get('tax'):
+            order_data['tax'] = request.data.get('tax')
 
-        for product in cart_data.get('products', []):
-            order_data['items'].append({
-                'product': product['product_id'],
-                'quantity': product['quantity']
-            })
+        for product_in_cart in cart_data['products']:
+            order_item_data = {
+                "product": {"product_id": product_in_cart['product_id']},
+                "quantity": product_in_cart['quantity'],
+            }
+            order_data["items"].append(order_item_data)
 
-        serializer = OrderSerializer(data=order_data, context={'request': request})
-
+        serializer = OrderSerializer(data=order_data)
         if serializer.is_valid():
             order = serializer.save()
-
-            subtotal = order.total_amount
-            shipping = order.shipping
-            tax = order.tax
-            total = subtotal + shipping + tax
-
-            order.total_amount = total  
-            order.save()
 
             try:
                 subject = "Your Order Confirmation"
@@ -63,16 +51,18 @@ class CreateOrderView(APIView):
                 print("Email Sent")
             except Exception as e:
                 print(f"Error sending confirmation email: {e}")
-
-            response_data = serializer.data
-            response_data['subtotal'] = str(subtotal) 
-            response_data['shipping'] = str(shipping)  
-            response_data['tax'] = str(tax)            
-            response_data['total'] = str(total)        
-
-            return Response(response_data, status=status.HTTP_201_CREATED)
-
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class TrackOrderView(APIView):
+    def get(self, request, order_id):
+        try:
+            order = Order.objects.get(pk=order_id)
+            serializer = OrderSerializer(order)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Order.DoesNotExist:
+            return Response({"detail": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
+
 
     
 class OrderListView(APIView):

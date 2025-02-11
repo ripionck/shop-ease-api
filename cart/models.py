@@ -1,21 +1,20 @@
 from django.db import models
-from products.models import Product
-from users.models import User
+from products.models import Product 
+from users.models import User  
 
-class ShoppingCart(models.Model):
+class Cart(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart')
-    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Shopping Cart for {self.user.username}"
-
+        return f"Cart {self.id} for {self.user.username}"
+    
     class Meta:
-        verbose_name = "Shopping Cart"
-        verbose_name_plural = "Shopping Carts"
+        verbose_name = "Cart"
+        verbose_name_plural = "Carts"
 
 class CartItem(models.Model):
-    cart = models.ForeignKey(ShoppingCart, on_delete=models.CASCADE, related_name='items')
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)

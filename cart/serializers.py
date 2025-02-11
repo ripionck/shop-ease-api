@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ShoppingCart, CartItem, Product
+from .models import Cart, CartItem, Product
 
 class ProductCartSerializer(serializers.ModelSerializer):
     product_id = serializers.UUIDField(source='product.id', read_only=True) 
@@ -38,7 +38,7 @@ class ProductCartSerializer(serializers.ModelSerializer):
         return main_image.image.url if main_image else None
 
 
-class ShoppingCartSerializer(serializers.ModelSerializer):
+class CartSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(read_only=True) 
     products = serializers.SerializerMethodField()
     total = serializers.SerializerMethodField()
@@ -48,10 +48,10 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
     totalQuantity = serializers.SerializerMethodField()
 
     class Meta:
-        model = ShoppingCart
+        model = Cart
         fields = [
             'id', 'userId','products', 'total', 'discountedTotal',
-            'userId', 'totalProducts', 'totalQuantity', 'created_at', 'updated_at'
+            'userId', 'totalProducts', 'totalQuantity', 'updated_at'
         ]
 
     def get_products(self, obj):
@@ -104,5 +104,4 @@ class CartItemUpdateSerializer(serializers.ModelSerializer):
 
 
     
-
 
