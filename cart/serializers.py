@@ -2,24 +2,24 @@ from rest_framework import serializers
 from .models import ShoppingCart, CartItem, Product
 
 class ProductCartSerializer(serializers.ModelSerializer):
-    id = serializers.CharField(source='product.id')
+    product_id = serializers.UUIDField(source='product.id', read_only=True) 
     title = serializers.CharField(source='product.name')
     price = serializers.DecimalField(source='product.price', max_digits=10, decimal_places=2)
     quantity = serializers.IntegerField()
     total = serializers.SerializerMethodField()
     discountPercentage = serializers.SerializerMethodField()
-    discountedPrice = serializers.SerializerMethodField()
+    discountedTotal = serializers.SerializerMethodField()
     thumbnail = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem
         fields = [
-            'id', 'title', 'price', 'quantity', 'total',
-            'discountPercentage', 'discountedPrice', 'thumbnail'
+            'product_id', 'title', 'price', 'quantity', 'total',
+            'discountPercentage', 'discountedTotal', 'thumbnail'
         ]
-
+    
     def get_total(self, obj):
-        return obj.quantity * float(obj.product.price)
+        return round(obj.quantity * float(obj.product.price), 2)
 
     def get_discountPercentage(self, obj):
         if obj.product.discounted_price:
@@ -28,22 +28,22 @@ class ProductCartSerializer(serializers.ModelSerializer):
             return round(((original_price - discounted_price) / original_price) * 100, 2)
         return 0
 
-    def get_discountedPrice(self, obj):
+    def get_discountedTotal(self, obj):
         if obj.product.discounted_price:
-            return obj.quantity * float(obj.product.discounted_price)
+            return round(obj.quantity * float(obj.product.discounted_price), 2)
         return self.get_total(obj)
 
     def get_thumbnail(self, obj):
-        if obj.product:
-            return obj.product.main_image
-        return None
+        main_image = obj.product.images.filter(is_main=True).first()
+        return main_image.image.url if main_image else None
 
 
 class ShoppingCartSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(read_only=True) 
     products = serializers.SerializerMethodField()
     total = serializers.SerializerMethodField()
     discountedTotal = serializers.SerializerMethodField()
-    userId = serializers.CharField(source='user.id')
+    userId = serializers.UUIDField(source='user.id', read_only=True)
     totalProducts = serializers.SerializerMethodField()
     totalQuantity = serializers.SerializerMethodField()
 
@@ -70,24 +70,12 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
             for item in obj.items.all()
         ), 2)
 
-
     def get_totalProducts(self, obj):
         return obj.items.count()
 
     def get_totalQuantity(self, obj):
         return sum(item.quantity for item in obj.items.all())
-
-
-class CartItemUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CartItem
-        fields = ['quantity']
-
-    def validate_quantity(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Quantity must be greater than zero.")
-        return value
-
+    
 
 class AddToCartSerializer(serializers.Serializer):
     product_id = serializers.UUIDField()
@@ -97,3 +85,24 @@ class AddToCartSerializer(serializers.Serializer):
         if not Product.objects.filter(id=value).exists():
             raise serializers.ValidationError("Product does not exist.")
         return value
+
+
+class CartItemUpdateSerializer(serializers.ModelSerializer):
+    quantity = serializers.IntegerField(min_value=0, required=False) # 
+    product_id = serializers.UUIDField(required=False, allow_null=True)
+    class Meta:
+        model = CartItem
+        fields = ['quantity', 'product_id']
+    def validate(self, data):
+        quantity = data.get('quantity')
+        product_id = data.get('product_id')
+        if quantity is None and product_id is None:
+            raise serializers.ValidationError("At least one of 'quantity' or 'product_id' must be provided.")
+        if product_id is not None and not Product.objects.filter(id=product_id).exists():
+            raise serializers.ValidationError("Product does not exist.")
+        return data
+
+
+    
+
+
