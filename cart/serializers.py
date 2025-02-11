@@ -50,8 +50,8 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShoppingCart
         fields = [
-            'id', 'products', 'total', 'discountedTotal',
-            'userId', 'totalProducts', 'totalQuantity'
+            'id', 'userId','products', 'total', 'discountedTotal',
+            'userId', 'totalProducts', 'totalQuantity', 'created_at', 'updated_at'
         ]
 
     def get_products(self, obj):
