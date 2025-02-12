@@ -53,7 +53,6 @@ class CategoryView(APIView):
         return Response({"message": "Category deleted successfully."}, status=status.HTTP_200_OK)
     
 class ProductView(APIView):
-    permission_classes = [IsAuthenticatedOrReadOnly]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get(self, request):
