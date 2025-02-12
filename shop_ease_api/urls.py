@@ -21,16 +21,15 @@ from django.http import JsonResponse
 def testing_root(request):
     return JsonResponse({"message": "Testing root route works."})
 
-
 urlpatterns = [
-    path('api/v1/', testing_root, name='testing-root'),
-    # path('admin/', admin.site.urls),
-    path('api/v1/', include('users.urls')),
-    path('api/v1/', include('products.urls')),
-    path('api/v1/', include('cart.urls')),
-    path('api/v1/', include('wishlist.urls')),
-    path('api/v1/', include('orders.urls')),
-    path('api/v1/', include('payments.urls')),
+    path('', testing_root, name='testing-root'),
+    # path('admin/', admin.site.urls),  # 
+    path('api/v1/', include(('users.urls', 'users'), namespace='users')),
+    path('api/v1/', include(('products.urls', 'products'), namespace='products')),
+    path('api/v1/', include(('cart.urls', 'cart'), namespace='cart')),
+    path('api/v1/', include(('wishlist.urls', 'wishlist'), namespace='wishlist')),
+    path('api/v1/', include(('orders.urls', 'orders'), namespace='orders')),
+    path('api/v1/', include(('payments.urls', 'payments'), namespace='payments')),
 ]
 
 
