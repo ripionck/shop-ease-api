@@ -16,9 +16,14 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
+from django.http import JsonResponse
+
+def testing_root(request):
+    return JsonResponse({"message": "Testing root route works."})
 
 
 urlpatterns = [
+    path('api/v1/', testing_root, name='testing-root'),
     # path('admin/', admin.site.urls),
     path('api/v1/', include('users.urls')),
     path('api/v1/', include('products.urls')),
