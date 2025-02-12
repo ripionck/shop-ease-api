@@ -14,6 +14,7 @@ import os
 from datetime import timedelta
 from dotenv import load_dotenv
 from pathlib import Path
+import dj_database_url
 
 load_dotenv()
 
@@ -134,17 +135,24 @@ DEFAULT_FILE_STORAGE = 'cloudinary.CloudinaryStorage'
 #     }
 # }
 
-# PostgreSQL database settings
+
+
+# Render database 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DATABASE_NAME'),
-        'USER': os.environ.get('DATABASE_USER'),
-        'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
-        'HOST': os.environ.get('DATABASE_HOST'),
-        'PORT': os.environ.get('DATABASE_PORT'),
-    }
+    'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
 }
+
+# PostgreSQL database settings
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.environ.get('DATABASE_NAME'),
+#         'USER': os.environ.get('DATABASE_USER'),
+#         'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
+#         'HOST': os.environ.get('DATABASE_HOST'),
+#         'PORT': os.environ.get('DATABASE_PORT'),
+#     }
+# }
 
 
 
