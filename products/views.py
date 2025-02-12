@@ -1,14 +1,28 @@
+from django.db import IntegrityError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, IsAdminUser
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, BasePermission, IsAuthenticated
 from django.shortcuts import get_object_or_404
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .models import *
 from .serializers import *
 
+class IsAdminOrReadOnly(BasePermission):
+    """
+    Custom permission to allow read-only access to all, but
+    only allow admin users to create, update, or delete.
+    """
+    def has_permission(self, request, view):
+        if request.method in ['GET', 'HEAD', 'OPTIONS']:
+            return True  
+
+        # Check for admin role for other methods
+        return request.user.is_authenticated and request.user.role == 'admin'
+
+
 class CategoryView(APIView):
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get(self, request):
@@ -19,6 +33,7 @@ class CategoryView(APIView):
         categories = queryset[skip:skip + limit]
         serializer = CategorySerializer(categories, many=True)
         return Response({
+            "success": True,
             "categories": serializer.data,
             "total": total,
             "skip": skip,
@@ -26,37 +41,31 @@ class CategoryView(APIView):
         })
 
     def post(self, request):
-        self.permission_classes = [IsAdminUser]
-        if not self.check_permissions(request):
-            return Response({'detail': 'Only admin can create category.'}, status=status.HTTP_403_FORBIDDEN)
         serializer = CategorySerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            try:
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except IntegrityError:  
+                return Response({"error": "A category with this name already exists."}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, pk):
-        self.permission_classes = [IsAdminUser]
-        if not self.check_permissions(request):
-            return Response({'detail': 'Only admin can update category.'}, status=status.HTTP_403_FORBIDDEN)
         category = get_object_or_404(Category, pk=pk)
         serializer = CategorySerializer(category, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
+            return Response({"message": "Category updated successfully", "category":serializer.data}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        self.permission_classes = [IsAdminUser]
-        if not self.check_permissions(request):
-            return Response({'detail': 'Only admin can delete category.'}, status=status.HTTP_403_FORBIDDEN)
         category = get_object_or_404(Category, pk=pk)
         category.delete()
-        return Response({"message": "Category deleted successfully."}, status=status.HTTP_200_OK)
+        return Response({"message": "Category deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 
 class ProductView(APIView):
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get(self, request):
@@ -74,18 +83,18 @@ class ProductView(APIView):
         })
 
     def post(self, request):
-        self.permission_classes = [IsAdminUser]
-        if not self.check_permissions(request):
-            return Response({'detail': 'Only admin can create product.'}, status=status.HTTP_403_FORBIDDEN)
         serializer = ProductSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            try:
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except IntegrityError:  
+                return Response({"error": "A product with this name already exists."}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ProductDetailView(APIView):
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
 
     def get_object(self, pk):
         return get_object_or_404(Product, pk=pk)
@@ -96,9 +105,6 @@ class ProductDetailView(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
-        self.permission_classes = [IsAdminUser]
-        if not self.check_permissions(request):
-            return Response({'detail': 'Only admin can update product.'}, status=status.HTTP_403_FORBIDDEN)
         product = self.get_object(pk)
         serializer = ProductSerializer(product, data=request.data, partial=True)
         if serializer.is_valid():
@@ -107,22 +113,16 @@ class ProductDetailView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        self.permission_classes = [IsAdminUser]
-        if not self.check_permissions(request):
-            return Response({'detail': 'Only admin can delete product.'}, status=status.HTTP_403_FORBIDDEN)
         product = self.get_object(pk)
         product.delete()
         return Response({"message": "Product deleted successfully."}, status=status.HTTP_200_OK)
 
 
 class ProductImageView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminOrReadOnly]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, product_id):
-        if not self.check_permissions(request):
-            return Response({'detail': 'Only admin can add product image.'}, status=status.HTTP_403_FORBIDDEN)
-
         product = get_object_or_404(Product, pk=product_id)
         image = request.FILES.get('image')
         if not image:
@@ -151,8 +151,6 @@ class ReviewView(APIView):
 
     def post(self, request, product_id):
         self.permission_classes = [IsAuthenticated]
-        if not self.check_permissions(request):
-            return Response({'detail': 'Authentication required to post a review.'}, status=status.HTTP_403_FORBIDDEN)
         product = get_object_or_404(Product, pk=product_id)
         serializer = ReviewSerializer(data=request.data, context={'request': request, 'product': product})
         if serializer.is_valid():
