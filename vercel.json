@@ -15,5 +15,10 @@
       "src": "/(.*)",
       "dest": "shop_ease_api/wsgi.py"
     }
-  ]
+  ],
+  "functions": {
+    "app/api/**/*": {
+      "maxDuration": 10
+    }
+  }
 }
