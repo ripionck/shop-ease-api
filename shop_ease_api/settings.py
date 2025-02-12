@@ -14,7 +14,7 @@ import os
 from datetime import timedelta
 from dotenv import load_dotenv
 from pathlib import Path
-import dj_database_url
+from urllib.parse import urlparse
 
 load_dotenv()
 
@@ -135,10 +135,6 @@ DEFAULT_FILE_STORAGE = 'cloudinary.CloudinaryStorage'
 #     }
 # }
 
-# Render database 
-DATABASES = {
-    'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
-}
 
 # PostgreSQL database settings
 # DATABASES = {
@@ -152,6 +148,21 @@ DATABASES = {
 #     }
 # }
 
+
+# Replace the DATABASES section of your settings.py with this
+tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': tmpPostgres.path.replace('/', ''),
+        'USER': tmpPostgres.username,
+        'PASSWORD': tmpPostgres.password,
+        'HOST': tmpPostgres.hostname,
+        'PORT': 5432,
+        'OPTIONS': {'sslmode': 'require'},
+    }
+}
 
 
 # Password validation
@@ -205,6 +216,7 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'ROTATE_REFRESH_TOKENS': True,
 }
+
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'

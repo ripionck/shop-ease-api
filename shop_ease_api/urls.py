@@ -22,7 +22,7 @@ def testing_root(request):
     return JsonResponse({"message": "Testing root route works."})
 
 urlpatterns = [
-    path('', testing_root, name='testing-root'),
+    path('api/v1/', testing_root, name='testing-root'),
     # path('admin/', admin.site.urls),  # 
     path('api/v1/', include(('users.urls', 'users'), namespace='users')),
     path('api/v1/', include(('products.urls', 'products'), namespace='products')),
