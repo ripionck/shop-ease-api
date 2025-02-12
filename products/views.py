@@ -72,7 +72,7 @@ class ProductView(APIView):
         queryset = Product.objects.all()
         total = queryset.count()
         skip = int(request.query_params.get('skip', 0))
-        limit = int(request.query_params.get('limit', 30))
+        limit = int(request.query_params.get('limit', 5))
         products = queryset[skip:skip + limit]
         serializer = ProductSerializer(products, many=True)
         return Response({
