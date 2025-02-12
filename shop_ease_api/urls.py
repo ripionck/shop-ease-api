@@ -25,7 +25,7 @@ urlpatterns = [
     path('', testing_root, name='testing-root'),
     # path('admin/', admin.site.urls),  # 
     path('api/v1/', include(('users.urls', 'users'), namespace='users')),
-    path('api/v1/', include(('products.urls', 'products'), namespace='products')),
+    path('products/', include(('products.urls', 'products'), namespace='products')),
     path('api/v1/', include(('cart.urls', 'cart'), namespace='cart')),
     path('api/v1/', include(('wishlist.urls', 'wishlist'), namespace='wishlist')),
     path('api/v1/', include(('orders.urls', 'orders'), namespace='orders')),
