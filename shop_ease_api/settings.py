@@ -27,13 +27,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-ALLOWED_HOSTS = []
-# ALLOWED_HOSTS = ['yourdomain.com', 'www.yourdomain.com']
-# CORS_ALLOWED_ORIGINS = [
-#     "https://frontend.yourdomain.com",
-#     "http://localhost:3000",  
-# ]
+DEBUG = False
+ALLOWED_HOSTS = ['.vercel.app', '.now.sh']
+CORS_ALLOWED_ORIGINS = [
+    "https://frontend.yourdomain.com",
+    "http://localhost:5173",  
+]
 
 # Security middleware settings
 CSRF_COOKIE_SECURE = True
@@ -52,6 +51,7 @@ APPEND_SLASH = False
 
 INSTALLED_APPS = [
     # 'django.contrib.admin',
+    'whitenoise.runserver_nostatic',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -73,6 +73,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
