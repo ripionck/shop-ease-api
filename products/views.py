@@ -29,7 +29,7 @@ class CategoryView(APIView):
         queryset = Category.objects.filter(parent_category__isnull=True)
         total = queryset.count()
         skip = int(request.query_params.get('skip', 0))
-        limit = int(request.query_params.get('limit', 30))
+        limit = int(request.query_params.get('limit', 10))
         categories = queryset[skip:skip + limit]
         serializer = CategorySerializer(categories, many=True)
         return Response({
