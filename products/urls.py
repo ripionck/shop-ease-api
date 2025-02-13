@@ -11,6 +11,6 @@ urlpatterns = [
     path('products/', ProductListView.as_view(), name='product-list'),
     path('products/<uuid:pk>/', ProductDetailView.as_view(), name='product-detail'),
     path('products/<uuid:product_id>/images/', ProductImageView.as_view(), name='product-image-list'),
-    path('reviews/<uuid:product_id>/', ReviewListView.as_view(), name='review-list'),
-    path('reviews/<uuid:review_id>/', ReviewDetailView.as_view(), name='review-detail'),
+    path('products/<uuid:product_id>/reviews/', ReviewListView.as_view(), name='review-list'),
+    path('reviews/<uuid:review_id>/', ReviewDetailView.as_view(), name='delete-review'),
 ]

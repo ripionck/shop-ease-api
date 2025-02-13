@@ -130,7 +130,6 @@ class ProductImageView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-
 class ReviewListView(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
@@ -140,12 +139,17 @@ class ReviewListView(APIView):
         return Response({"reviews": serializer.data}, status=status.HTTP_200_OK)
 
     def post(self, request, product_id):
+        if not request.user.is_authenticated:
+            return Response({"detail": "Authentication required to create a review."}, status=status.HTTP_401_UNAUTHORIZED)
+
         product = get_object_or_404(Product, pk=product_id)
+
         serializer = ReviewSerializer(data=request.data, context={'request': request, 'product': product})
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(user=request.user) 
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response({"message":"review added", "review": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"message": "Invalid data.", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ReviewDetailView(APIView):
@@ -156,7 +160,9 @@ class ReviewDetailView(APIView):
 
     def delete(self, request, review_id):
         review = self.get_object(review_id)
+
         if not request.user.is_staff and review.user != request.user:
             return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
         review.delete()
-        return Response({"message": "Review deleted!"},status=status.HTTP_204_NO_CONTENT)
+        return Response({"message": "Review deleted!"}, status=status.HTTP_204_NO_CONTENT)
