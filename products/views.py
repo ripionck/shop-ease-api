@@ -1,3 +1,4 @@
+import uuid
 from django.db import IntegrityError
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -7,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .models import *
 from .serializers import *
+from rest_framework.pagination import PageNumberPagination
 
 class IsAdminOrReadOnly(BasePermission):
     """
@@ -15,30 +17,27 @@ class IsAdminOrReadOnly(BasePermission):
     """
     def has_permission(self, request, view):
         if request.method in ['GET', 'HEAD', 'OPTIONS']:
-            return True  
+            return True
 
         # Check for admin role for other methods
         return request.user.is_authenticated and request.user.role == 'admin'
 
+class CategoryPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class CategoryView(APIView):
     permission_classes = [IsAdminOrReadOnly]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
+    pagination_class = CategoryPagination
 
     def get(self, request):
         queryset = Category.objects.filter(parent_category__isnull=True)
-        total = queryset.count()
-        skip = int(request.query_params.get('skip', 0))
-        limit = int(request.query_params.get('limit', 10))
-        categories = queryset[skip:skip + limit]
-        serializer = CategorySerializer(categories, many=True)
-        return Response({
-            "success": True,
-            "categories": serializer.data,
-            "total": total,
-            "skip": skip,
-            "limit": limit,
-        })
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(queryset, request)
+        serializer = CategorySerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
         serializer = CategorySerializer(data=request.data)
@@ -46,7 +45,7 @@ class CategoryView(APIView):
             try:
                 serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
-            except IntegrityError:  
+            except IntegrityError:
                 return Response({"error": "A category with this name already exists."}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -63,25 +62,26 @@ class CategoryView(APIView):
         category.delete()
         return Response({"message": "Category deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
+class ProductPagination(PageNumberPagination):
+    page_size = 5  
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class ProductView(APIView):
     permission_classes = [IsAdminOrReadOnly]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
+    pagination_class = ProductPagination
 
     def get(self, request):
-        queryset = Product.objects.all()
-        total = queryset.count()
-        skip = int(request.query_params.get('skip', 0))
-        limit = int(request.query_params.get('limit', 5))
-        products = queryset[skip:skip + limit]
-        serializer = ProductSerializer(products, many=True)
-        return Response({
-            "success": True,
-            "products": serializer.data,
-            "total": total,
-            "skip": skip,
-            "limit": limit
-        })
+        queryset = Product.objects.all().prefetch_related('category', 'subcategory')
+
+        # Optimize with values() if you only need a subset of fields:
+        # products = queryset.values('id', 'name', 'price', 'category_id', 'subcategory_id', 'main_image').prefetch_related('category', 'subcategory') # Exampl
+
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(queryset, request)
+        serializer = ProductSerializer(page, many=True)
+        return paginator.get_paginated_response( serializer.data)
 
     def post(self, request):
         serializer = ProductSerializer(data=request.data)
@@ -89,7 +89,7 @@ class ProductView(APIView):
             try:
                 serializer.save()
                 return Response({"message": "Product added successfully", "product":serializer.data}, status=status.HTTP_201_CREATED)
-            except IntegrityError:  
+            except IntegrityError:
                 return Response({"error": "A product with this name already exists."}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -141,14 +141,21 @@ class ProductImageView(APIView):
 
         return Response(ProductImageSerializer(product_image).data, status=status.HTTP_201_CREATED)
 
+class ReviewPagination(PageNumberPagination):
+    page_size = 10 
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class ReviewView(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
+    pagination_class = ReviewPagination
 
     def get(self, request, product_id):
         reviews = Review.objects.filter(product_id=product_id)
-        serializer = ReviewSerializer(reviews, many=True)
-        return Response({"success": True,'reviews': serializer.data}, status=status.HTTP_200_OK)
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(reviews, request)
+        serializer = ReviewSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request, product_id):
         self.permission_classes = [IsAuthenticated]
@@ -156,9 +163,8 @@ class ReviewView(APIView):
         serializer = ReviewSerializer(data=request.data, context={'request': request, 'product': product})
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Review created for the peoduct", "review": serializer.data}, status=status.HTTP_201_CREATED)
+            return Response({"message": "Review created for the product", "review": serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class ReviewDetailView(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
