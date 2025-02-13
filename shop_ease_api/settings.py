@@ -18,7 +18,6 @@ import dj_database_url
 
 load_dotenv()
 
-PORT = os.getenv('PORT', 8000)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,20 +30,14 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
-ALLOWED_HOSTS = ['shopease-tau.vercel.app', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['*']
 
 CORS_ALLOWED_ORIGINS = [
     "https://frontend.yourdomain.com",
     "http://localhost:5173",  
 ]
 
-# Security middleware settings
-# CSRF_COOKIE_SECURE = True
-# SESSION_COOKIE_SECURE = True
-# SECURE_SSL_REDIRECT = True
-# SECURE_HSTS_SECONDS = 31536000  
-# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-# SECURE_HSTS_PRELOAD = True
+SECURE_SSL_REDIRECT = True
 
 APPEND_SLASH = False
 

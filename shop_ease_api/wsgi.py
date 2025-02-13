@@ -15,5 +15,4 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'shop_ease_api.settings')
 
 application = get_wsgi_application()
 
-app = application
 
