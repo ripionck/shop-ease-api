@@ -149,6 +149,19 @@ DEFAULT_FILE_STORAGE = 'cloudinary.CloudinaryStorage'
 # }
 
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.environ.get('DATABASE_NAME', 'defaultdb'),  
+#         'USER': os.environ.get('DATABASE_USER', 'avnadmin'),
+#         'PASSWORD': os.environ.get('DATABASE_PASSWORD'),  
+#         'HOST': os.environ.get('DATABASE_HOST', 'pg-3761b386-ripionchakma-f8e1.h.aivencloud.com'),
+#         'PORT': os.environ.get('DATABASE_PORT', '18904'),
+        
+#     }
+# }
+
+
 # Replace the DATABASES section of your settings.py with this
 tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
 
@@ -159,8 +172,8 @@ DATABASES = {
         'USER': tmpPostgres.username,
         'PASSWORD': tmpPostgres.password,
         'HOST': tmpPostgres.hostname,
-        'PORT': 5432,
-        'OPTIONS': {'sslmode': 'require'},
+        'PORT': 18904,
+        'SSLMODE': 'require',
     }
 }
 
