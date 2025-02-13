@@ -2,10 +2,11 @@ import uuid
 from django.db import models
 from django.conf import settings
 from cloudinary.models import CloudinaryField
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save, post_delete, pre_delete
 from django.dispatch import receiver
 import cloudinary.uploader
 from django.db.models import Avg
+from django.core.exceptions import ValidationError
 
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -24,7 +25,8 @@ class Category(models.Model):
         indexes = [
             models.Index(fields=['parent_category']),
         ]
-        ordering = ['name']  
+        ordering = ['name']
+
 
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -44,6 +46,15 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def clean(self):
+        if self.subcategory and self.subcategory.parent_category != self.category:
+            raise ValidationError("Subcategory must belong to the selected category.")
+
+    def update_rating(self):
+        average_rating = self.reviews.aggregate(Avg('rating'))['rating__avg']
+        self.rating = average_rating if average_rating is not None else None
+        self.save(update_fields=['rating'])
+
     class Meta:
         verbose_name = "Product"
         verbose_name_plural = "Products"
@@ -52,7 +63,7 @@ class Product(models.Model):
             models.Index(fields=['subcategory']),
             models.Index(fields=['brand']),
         ]
-        ordering = ['-created_at']  
+        ordering = ['-created_at']
 
 
 class ProductImage(models.Model):
@@ -71,6 +82,7 @@ class ProductImage(models.Model):
             models.Index(fields=['product']),
         ]
 
+
 class Review(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
@@ -86,19 +98,23 @@ class Review(models.Model):
             models.Index(fields=['product']),
             models.Index(fields=['user']),
         ]
-        ordering = ['-created_at']  
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Review by {self.user.username} on {self.product.name}"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.product.update_rating()
 
 
-@receiver(post_save, sender=ProductImage)
+@receiver(pre_delete, sender=ProductImage)
 def delete_product_image_from_cloudinary(sender, instance, **kwargs):
     if instance.image and hasattr(instance.image, 'public_id'):
         cloudinary.uploader.destroy(instance.image.public_id)
 
-
-@receiver(post_save, sender=Review)
-@receiver(post_delete, sender=Review)
-def update_product_rating(sender, instance, **kwargs):
-    product = instance.product
-    average_rating = product.reviews.aggregate(Avg('rating'))['rating__avg']
-    product.rating = average_rating if average_rating is not None else None  
-    product.save(update_fields=['rating'])
+@receiver(pre_delete, sender=Product)
+def delete_product_and_images_from_cloudinary(sender, instance, **kwargs):
+    for image in instance.images.all():
+        if image.image and hasattr(image.image, 'public_id'):
+            cloudinary.uploader.destroy(image.image.public_id)

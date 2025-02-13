@@ -53,16 +53,15 @@ class ProductImageSerializer(serializers.ModelSerializer):
         return obj.image.url
 
 class ReviewSerializer(serializers.ModelSerializer):
-    product = serializers.PrimaryKeyRelatedField(read_only=True)
     reviewer = serializers.SerializerMethodField()
 
     class Meta:
         model = Review
-        fields = ['id', 'product', 'reviewer', 'rating', 'comment', 'created_at']
-        read_only_fields = ['id', 'product', 'reviewer', 'created_at']
+        fields = ['id', 'reviewer', 'rating', 'comment', 'created_at']
+        read_only_fields = ['id', 'reviewer', 'created_at']
 
     def get_reviewer(self, instance):
-        return instance.user.username  
+        return instance.user.username
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -72,18 +71,11 @@ class ReviewSerializer(serializers.ModelSerializer):
         product = self.context.get('product')
         if not product:
             raise serializers.ValidationError("Product not provided in context")
-        review = Review.objects.create(
-            product=product,
-            user=user,
-            **validated_data
-        )
-        product.update_rating()
+
+        review = Review.objects.create(product=product, user=user, **validated_data)
+        product.update_rating()  
         return review
 
-    def to_representation(self, instance):
-        rep = super().to_representation(instance)
-        rep.pop('product', None)
-        return rep
     
 class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
