@@ -10,6 +10,7 @@ from .models import *
 from .serializers import *
 from rest_framework.pagination import PageNumberPagination
 
+
 class IsAdminOrReadOnly(BasePermission):
     """
     Custom permission to allow read-only access to all, but
@@ -23,9 +24,9 @@ class IsAdminOrReadOnly(BasePermission):
         return request.user.is_authenticated and request.user.role == 'admin'
 
 class CategoryPagination(PageNumberPagination):
-    page_size = 10
+    page_size = 5
     page_size_query_param = 'page_size'
-    max_page_size = 100
+    max_page_size = 5
 
 class CategoryView(APIView):
     permission_classes = [IsAdminOrReadOnly]
@@ -54,7 +55,7 @@ class CategoryView(APIView):
         serializer = CategorySerializer(category, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Category updated successfully", "category":serializer.data}, status=status.HTTP_200_OK)
+            return Response({"message": "Category updated successfully", "category": serializer.data}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
@@ -74,21 +75,17 @@ class ProductView(APIView):
 
     def get(self, request):
         queryset = Product.objects.all().prefetch_related('category', 'subcategory')
-
-        # Optimize with values() if you only need a subset of fields:
-        # products = queryset.values('id', 'name', 'price', 'category_id', 'subcategory_id', 'main_image').prefetch_related('category', 'subcategory') # Exampl
-
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(queryset, request)
         serializer = ProductSerializer(page, many=True)
-        return paginator.get_paginated_response( serializer.data)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
         serializer = ProductSerializer(data=request.data)
         if serializer.is_valid():
             try:
                 serializer.save()
-                return Response({"message": "Product added successfully", "product":serializer.data}, status=status.HTTP_201_CREATED)
+                return Response({"message": "Product added successfully", "product": serializer.data}, status=status.HTTP_201_CREATED)
             except IntegrityError:
                 return Response({"error": "A product with this name already exists."}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

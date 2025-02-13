@@ -5,7 +5,7 @@ from cloudinary.models import CloudinaryField
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 import cloudinary.uploader
-from django.db.models import Avg 
+from django.db.models import Avg
 
 
 class Category(models.Model):
@@ -23,7 +23,7 @@ class Category(models.Model):
         verbose_name = "Category"
         verbose_name_plural = "Categories"
         indexes = [
-            models.Index(fields=['parent_category']),  
+            models.Index(fields=['parent_category']),
         ]
 
 
@@ -49,9 +49,9 @@ class Product(models.Model):
         verbose_name = "Product"
         verbose_name_plural = "Products"
         indexes = [
-            models.Index(fields=['category']),  
-            models.Index(fields=['subcategory']),  
-            models.Index(fields=['brand']),  
+            models.Index(fields=['category']),
+            models.Index(fields=['subcategory']),
+            models.Index(fields=['brand']),
         ]
 
 
@@ -68,7 +68,7 @@ class ProductImage(models.Model):
         verbose_name = "Product Image"
         verbose_name_plural = "Product Images"
         indexes = [
-            models.Index(fields=['product']), 
+            models.Index(fields=['product']),
         ]
 
 
@@ -84,8 +84,8 @@ class Review(models.Model):
         verbose_name = "Review"
         verbose_name_plural = "Reviews"
         indexes = [
-            models.Index(fields=['product']),  
-            models.Index(fields=['user']),  
+            models.Index(fields=['product']),
+            models.Index(fields=['user']),
         ]
 
 
@@ -100,5 +100,5 @@ def delete_product_image_from_cloudinary(sender, instance, **kwargs):
 def update_product_rating(sender, instance, **kwargs):
     product = instance.product
     average_rating = product.reviews.aggregate(Avg('rating'))['rating__avg']
-    product.rating = average_rating
-    product.save(update_fields=['rating'])  
+    product.rating = average_rating if average_rating is not None else None
+    product.save(update_fields=['rating'])
