@@ -18,6 +18,8 @@ import dj_database_url
 
 load_dotenv()
 
+PORT = os.getenv('PORT', 8000)
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
