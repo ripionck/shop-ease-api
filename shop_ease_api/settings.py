@@ -28,8 +28,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-ALLOWED_HOSTS = ['.vercel.app', '127.0.0.1', 'localhost'] 
+DEBUG = False
+ALLOWED_HOSTS = ['shopease-tau.vercel.app', '127.0.0.1', 'localhost']
 
 CORS_ALLOWED_ORIGINS = [
     "https://frontend.yourdomain.com",
