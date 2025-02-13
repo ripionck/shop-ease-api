@@ -2,11 +2,21 @@ import uuid
 from django.db import models
 from django.conf import settings
 from cloudinary.models import CloudinaryField
-from django.db.models.signals import post_save, post_delete, pre_delete
+from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 import cloudinary.uploader
 from django.db.models import Avg
 from django.core.exceptions import ValidationError
+
+ 
+COLOR_CHOICES = [
+        ('red', 'Red'),
+        ('blue', 'Blue'),
+        ('green', 'Green'),
+        ('black', 'Black'),
+        ('white', 'White'),
+        ('custom', 'Custom'),  
+    ]
 
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -38,6 +48,7 @@ class Product(models.Model):
     subcategory = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='subcategory_products')
     main_image = CloudinaryField('image', blank=True, null=True)
     brand = models.CharField(max_length=255, null=True, blank=True)
+    color = models.CharField(max_length=50, choices=COLOR_CHOICES, null=True, blank=True)
     stock = models.PositiveIntegerField(default=0)
     rating = models.FloatField(null=True, blank=True)
     features = models.JSONField(default=list)

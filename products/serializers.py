@@ -19,7 +19,6 @@ class CategorySerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         subcategories_data = validated_data.pop('subcategories', [])
-        # Create parent category
         category = Category.objects.create(**validated_data)
         # Create subcategories if provided
         for subcategory in subcategories_data:
@@ -88,9 +87,9 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'name', 'description', 'price', 'discounted_price',
-            'category_id', 'category', 'main_image', 'images', 'brand',
+            'category_id', 'category', 'main_image', 'images', 'color', 'brand',
             'stock', 'rating', 'features', 'specifications', 'tags',
-            'created_at', 'updated_at', 'reviews'
+            'created_at', 'updated_at', 'reviews'  
         ]
         read_only_fields = ['rating', 'created_at', 'updated_at']
 
@@ -100,9 +99,8 @@ class ProductSerializer(serializers.ModelSerializer):
         category_uuid = validated_data.pop('category_id')
         category = get_object_or_404(Category, id=category_uuid)
         validated_data['category'] = category
-
         product = super().create(validated_data)
-
+        
         if main_image:
             ProductImage.objects.create(
                 product=product,
@@ -111,15 +109,11 @@ class ProductSerializer(serializers.ModelSerializer):
             )
         
         # Create nested reviews.
-        # Note: The ReviewSerializer expects the user from request context.
         request = self.context.get('request')
         for review_data in reviews_data:
-            # Ensure the product field is not sent from the client.
             review_serializer = ReviewSerializer(data=review_data, context={'request': request})
             review_serializer.is_valid(raise_exception=True)
-            # Save each review, attaching the created product.
             review_serializer.save(product=product)
             product.update_rating()
         
         return product
-
