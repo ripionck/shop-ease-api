@@ -14,7 +14,6 @@ import os
 from datetime import timedelta
 from dotenv import load_dotenv
 from pathlib import Path
-from urllib.parse import urlparse
 
 load_dotenv()
 
@@ -149,31 +148,15 @@ DEFAULT_FILE_STORAGE = 'cloudinary.CloudinaryStorage'
 # }
 
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.environ.get('DATABASE_NAME', 'defaultdb'),  
-#         'USER': os.environ.get('DATABASE_USER', 'avnadmin'),
-#         'PASSWORD': os.environ.get('DATABASE_PASSWORD'),  
-#         'HOST': os.environ.get('DATABASE_HOST', 'pg-3761b386-ripionchakma-f8e1.h.aivencloud.com'),
-#         'PORT': os.environ.get('DATABASE_PORT', '18904'),
-        
-#     }
-# }
-
-
-# Replace the DATABASES section of your settings.py with this
-tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': tmpPostgres.path.replace('/', ''),
-        'USER': tmpPostgres.username,
-        'PASSWORD': tmpPostgres.password,
-        'HOST': tmpPostgres.hostname,
-        'PORT': 18904,
-        'SSLMODE': 'require',
+        'NAME': os.environ.get('DB_NAME'),  
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),  
+        'HOST': os.environ.get('DB_HOST'),
+        'PORT': os.environ.get('DB_PORT'),
+        
     }
 }
 
