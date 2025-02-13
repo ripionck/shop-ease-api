@@ -1,1 +1,0 @@
-web: gunicorn shop_ease_api.wsgi --bind 0.0.0.0:$PORT

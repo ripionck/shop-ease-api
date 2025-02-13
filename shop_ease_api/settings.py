@@ -41,12 +41,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  
 ]
 
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-
 APPEND_SLASH = False
 
 
@@ -61,7 +55,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'sslserver',
     'rest_framework',
     'rest_framework_simplejwt',
     'cloudinary',
