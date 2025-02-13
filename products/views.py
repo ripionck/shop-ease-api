@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from cloudinary.uploader import upload
 from .models import Category, Product, ProductImage, Review
 from .serializers import CategorySerializer, ProductImageUploadSerializer, ProductSerializer, ReviewSerializer
+from django.db.models import Q
 
 
 class IsAdminOrReadOnly(IsAuthenticatedOrReadOnly):
@@ -77,16 +78,58 @@ class ProductListView(APIView):
     pagination_class = ProductPagination
 
     def get(self, request):
-        queryset = Product.objects.all().prefetch_related('category', 'subcategory')
+        queryset = Product.objects.all().prefetch_related('category', 'subcategory', 'images')
+
+        # Search functionality
+        search_query = request.GET.get('search', None)
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query) |  # Case-insensitive name search
+                Q(description__icontains=search_query) |  # Case-insensitive description search
+                Q(brand__icontains=search_query) |  # Case-insensitive brand search
+                Q(category__name__icontains=search_query) |  # Search in category name
+                Q(subcategory__name__icontains=search_query)  # Search in subcategory name
+            ).distinct()  # Use distinct() to avoid duplicate results
+
+        # Filtering by category
+        category_id = request.GET.get('category')
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+
+        # Filtering by subcategory
+        subcategory_id = request.GET.get('subcategory')
+        if subcategory_id:
+            queryset = queryset.filter(subcategory_id=subcategory_id)
+
+        # Filtering by color
+        color = request.GET.get('color')
+        if color:
+            queryset = queryset.filter(color__iexact=color)  # Case-insensitive color filter
+
+        #Filtering by price range
+        min_price = request.GET.get('min_price')
+        max_price = request.GET.get('max_price')
+
+        if min_price and max_price:
+            queryset = queryset.filter(price__range = (min_price, max_price))
+        elif min_price:
+            queryset = queryset.filter(price__gte=min_price)
+        elif max_price:
+            queryset = queryset.filter(price__lte=max_price)
+
+        # Ordering
+        ordering = request.GET.get('ordering', '-created_at') #Default ordering by created_at
+        queryset = queryset.order_by(ordering)
+
         paginator = self.pagination_class()
         page = paginator.paginate_queryset(queryset, request)
-        serializer = ProductSerializer(page, many=True)
+        serializer = ProductSerializer(page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
-
     def post(self, request):
         if not request.user.is_staff:
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
-        serializer = ProductSerializer(data=request.data)
+
+        serializer = ProductSerializer(data=request.data, context={'request': request}) 
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Product added successfully!", "product": serializer.data}, status=status.HTTP_201_CREATED)
@@ -156,56 +199,3 @@ class ProductImageUploadView(APIView):
             return Response({"error": f"Failed to upload image: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class ReviewListView(APIView):
-    permission_classes = [IsAuthenticatedOrReadOnly]
-
-    def get(self, request, product_id):
-        reviews = Review.objects.filter(product_id=product_id)
-        serializer = ReviewSerializer(reviews, many=True)
-        return Response({"reviews": serializer.data}, status=status.HTTP_200_OK)
-
-    def post(self, request, product_id):
-        if not request.user.is_authenticated:
-            return Response({"detail": "Authentication required to create a review."}, status=status.HTTP_401_UNAUTHORIZED)
-
-        product = get_object_or_404(Product, pk=product_id)
-
-        serializer = ReviewSerializer(data=request.data, context={'request': request, 'product': product})
-        if serializer.is_valid():
-            serializer.save(user=request.user)
-            return Response({"message": "Review added successfully!", "review": serializer.data}, status=status.HTTP_201_CREATED)
-
-        return Response({"message": "Invalid data.", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-
-
-class ReviewDetailView(APIView):
-    permission_classes = [IsAuthenticatedOrReadOnly]
-
-    def get_object(self, review_id):
-        return get_object_or_404(Review, pk=review_id)
-
-    def get(self, request, review_id): 
-        review = self.get_object(review_id)
-        serializer = ReviewSerializer(review)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def put(self, request, review_id):
-        review = self.get_object(review_id)
-
-        if not request.user.is_staff and review.user != request.user:
-            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-
-        serializer = ReviewSerializer(review, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Review updated successfully!", "review": serializer.data}, status=status.HTTP_200_OK)
-        return Response({"message": "Invalid data.", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, review_id):
-        review = self.get_object(review_id)
-
-        if not request.user.is_staff and review.user != request.user:
-            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
-
-        review.delete()
-        return Response({"message": "Review deleted!"}, status=status.HTTP_204_NO_CONTENT)

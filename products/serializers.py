@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.shortcuts import get_object_or_404
 from .models import *
+from reviews.serializers import ReviewSerializer
 
 class SubCategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -37,30 +38,7 @@ class CategorySerializer(serializers.ModelSerializer):
                 Category.objects.create(parent_category=instance, **subcategory)
 
         return instance
-
-
-class ReviewSerializer(serializers.ModelSerializer):
-    reviewer = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Review
-        fields = ['id', 'reviewer', 'rating', 'comment', 'created_at']
-        read_only_fields = ['id', 'reviewer', 'created_at']
-
-    def get_reviewer(self, instance):
-        return instance.user.username
-
-    def create(self, validated_data):
-        request = self.context.get('request')
-        if not request:
-            raise serializers.ValidationError("Request context not provided")
-        user = request.user
-        product = self.context.get('product')
-        if not product:
-            raise serializers.ValidationError("Product not provided in context")
-        review = Review.objects.create(product=product, user=user, **validated_data)
-        product.update_rating()
-        return review
+    
     
 class ProductImageUploadSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
@@ -90,17 +68,19 @@ class ProductSerializer(serializers.ModelSerializer):
         read_only_fields = ['rating', 'created_at', 'updated_at']
 
     def create(self, validated_data):
-        reviews_data = validated_data.pop('reviews', [])
         category_uuid = validated_data.pop('category_id')
         category = get_object_or_404(Category, id=category_uuid)
         validated_data['category'] = category
         product = super().create(validated_data)
 
+        reviews_data = validated_data.pop('reviews', [])
         request = self.context.get('request')
-        for review_data in reviews_data:
-            review_serializer = ReviewSerializer(data=review_data, context={'request': request, 'product': product})
-            review_serializer.is_valid(raise_exception=True)
-            review_serializer.save()
-            product.update_rating()
 
+        if request:
+            for review_data in reviews_data:
+                review_serializer = ReviewSerializer(data=review_data, context={'request': request, 'product': product})
+                if review_serializer.is_valid(raise_exception=True):
+                    review_serializer.save()
+
+        product.update_rating()  
         return product
