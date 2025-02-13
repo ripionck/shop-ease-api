@@ -7,6 +7,7 @@ from products.models import Product
 from .models import Review
 from .serializers import ReviewSerializer
 
+
 class ReviewListView(APIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
@@ -21,7 +22,8 @@ class ReviewListView(APIView):
 
         product = get_object_or_404(Product, pk=product_id)
 
-        serializer = ReviewSerializer(data=request.data, context={'request': request, 'product': product})
+        serializer = ReviewSerializer(data=request.data, context={
+                                      'request': request, 'product': product})
         if serializer.is_valid():
             serializer.save(user=request.user)
             return Response({"message": "Review added successfully!", "review": serializer.data}, status=status.HTTP_201_CREATED)
@@ -35,7 +37,7 @@ class ReviewDetailView(APIView):
     def get_object(self, review_id):
         return get_object_or_404(Review, pk=review_id)
 
-    def get(self, request, review_id): 
+    def get(self, request, review_id):
         review = self.get_object(review_id)
         serializer = ReviewSerializer(review)
         return Response(serializer.data, status=status.HTTP_200_OK)

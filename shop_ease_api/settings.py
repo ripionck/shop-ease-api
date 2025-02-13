@@ -60,7 +60,9 @@ INSTALLED_APPS = [
     'cloudinary',
     'corsheaders',
 
+    'core',
     'users',
+    'categories',
     'products',
     'reviews',
     'orders',
