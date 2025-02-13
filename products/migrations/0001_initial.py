@@ -39,7 +39,6 @@ class Migration(migrations.Migration):
                 ('description', models.TextField()),
                 ('price', models.DecimalField(decimal_places=2, max_digits=10)),
                 ('discounted_price', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('main_image', cloudinary.models.CloudinaryField(blank=True, max_length=255, null=True, verbose_name='image')),
                 ('brand', models.CharField(blank=True, max_length=255, null=True)),
                 ('stock', models.PositiveIntegerField(default=0)),
                 ('rating', models.FloatField(blank=True, null=True)),

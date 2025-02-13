@@ -8,15 +8,14 @@ import cloudinary.uploader
 from django.db.models import Avg
 from django.core.exceptions import ValidationError
 
- 
 COLOR_CHOICES = [
-        ('red', 'Red'),
-        ('blue', 'Blue'),
-        ('green', 'Green'),
-        ('black', 'Black'),
-        ('white', 'White'),
-        ('custom', 'Custom'),  
-    ]
+    ('red', 'Red'),
+    ('blue', 'Blue'),
+    ('green', 'Green'),
+    ('black', 'Black'),
+    ('white', 'White'),
+    ('custom', 'Custom'),
+]
 
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -46,7 +45,6 @@ class Product(models.Model):
     discounted_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     subcategory = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='subcategory_products')
-    main_image = CloudinaryField('image', blank=True, null=True)
     brand = models.CharField(max_length=255, null=True, blank=True)
     color = models.CharField(max_length=50, choices=COLOR_CHOICES, null=True, blank=True)
     stock = models.PositiveIntegerField(default=0)
