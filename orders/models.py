@@ -22,8 +22,6 @@ class Order(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    shipping = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)  
-    tax = models.DecimalField(max_digits=10, decimal_places=2, default=0.00) 
     shipping_address = models.JSONField()
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -36,11 +34,12 @@ class Order(models.Model):
         verbose_name = "Order"
         verbose_name_plural = "Orders"
 
+
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=10, decimal_places=2)  
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
