@@ -2,9 +2,11 @@ import uuid
 from django.db import models
 from django.conf import settings
 from cloudinary.models import CloudinaryField
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 import cloudinary.uploader
+from django.db.models import Avg 
+
 
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -20,6 +22,10 @@ class Category(models.Model):
     class Meta:
         verbose_name = "Category"
         verbose_name_plural = "Categories"
+        indexes = [
+            models.Index(fields=['parent_category']),  
+        ]
+
 
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -39,14 +45,15 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def update_rating(self):
-        reviews = self.reviews.all()
-        self.rating = reviews.aggregate(models.Avg('rating'))['rating__avg'] if reviews.exists() else None
-        self.save()
-
     class Meta:
         verbose_name = "Product"
         verbose_name_plural = "Products"
+        indexes = [
+            models.Index(fields=['category']),  
+            models.Index(fields=['subcategory']),  
+            models.Index(fields=['brand']),  
+        ]
+
 
 class ProductImage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -60,6 +67,10 @@ class ProductImage(models.Model):
     class Meta:
         verbose_name = "Product Image"
         verbose_name_plural = "Product Images"
+        indexes = [
+            models.Index(fields=['product']), 
+        ]
+
 
 class Review(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -69,20 +80,25 @@ class Review(models.Model):
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        self.product.update_rating()
-
-    def delete(self, *args, **kwargs):
-        super().delete(*args, **kwargs)
-        self.product.update_rating()
-
     class Meta:
         verbose_name = "Review"
         verbose_name_plural = "Reviews"
+        indexes = [
+            models.Index(fields=['product']),  
+            models.Index(fields=['user']),  
+        ]
 
 
-@receiver(post_delete, sender=ProductImage)
+@receiver(post_save, sender=ProductImage)
 def delete_product_image_from_cloudinary(sender, instance, **kwargs):
     if instance.image and hasattr(instance.image, 'public_id'):
         cloudinary.uploader.destroy(instance.image.public_id)
+
+
+@receiver(post_save, sender=Review)
+@receiver(post_delete, sender=Review)
+def update_product_rating(sender, instance, **kwargs):
+    product = instance.product
+    average_rating = product.reviews.aggregate(Avg('rating'))['rating__avg']
+    product.rating = average_rating
+    product.save(update_fields=['rating'])  
