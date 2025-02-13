@@ -7,7 +7,6 @@ from django.dispatch import receiver
 import cloudinary.uploader
 from django.db.models import Avg
 
-
 class Category(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, unique=True)
@@ -25,7 +24,7 @@ class Category(models.Model):
         indexes = [
             models.Index(fields=['parent_category']),
         ]
-
+        ordering = ['name']  
 
 class Product(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -53,6 +52,7 @@ class Product(models.Model):
             models.Index(fields=['subcategory']),
             models.Index(fields=['brand']),
         ]
+        ordering = ['-created_at']  
 
 
 class ProductImage(models.Model):
@@ -71,7 +71,6 @@ class ProductImage(models.Model):
             models.Index(fields=['product']),
         ]
 
-
 class Review(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
@@ -87,6 +86,7 @@ class Review(models.Model):
             models.Index(fields=['product']),
             models.Index(fields=['user']),
         ]
+        ordering = ['-created_at']  
 
 
 @receiver(post_save, sender=ProductImage)
@@ -100,5 +100,5 @@ def delete_product_image_from_cloudinary(sender, instance, **kwargs):
 def update_product_rating(sender, instance, **kwargs):
     product = instance.product
     average_rating = product.reviews.aggregate(Avg('rating'))['rating__avg']
-    product.rating = average_rating if average_rating is not None else None
+    product.rating = average_rating if average_rating is not None else None  
     product.save(update_fields=['rating'])
