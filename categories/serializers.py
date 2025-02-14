@@ -11,28 +11,19 @@ class SubCategorySerializer(serializers.ModelSerializer):
 
 class CategorySerializer(serializers.ModelSerializer):
     subcategories = SubCategorySerializer(many=True, required=False)
-    parent_category = serializers.SerializerMethodField(read_only=True)
+    parent_category = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(), allow_null=True, required=False)
 
     class Meta:
         model = Category
         fields = ('id', 'name', 'description', 'parent_category',
                   'subcategories', 'created_at', 'updated_at')
-        read_only_fields = ('id', 'created_at',
-                            'updated_at', 'parent_category')
-
-    def get_parent_category_name(self, obj):
-        if obj.parent_category:
-            return obj.parent_category.name
-        return None
-
-    def validate_parent_category(self, value):
-        if value == "":
-            return None
-        return value
+        read_only_fields = ('id', 'created_at', 'updated_at')
 
     def create(self, validated_data):
         subcategories_data = validated_data.pop('subcategories', [])
-        parent_category = validated_data.pop('parent_category', None)
+        parent_category = validated_data.pop(
+            'parent_category', None)
 
         category = Category.objects.create(**validated_data)
         if parent_category:
@@ -45,8 +36,8 @@ class CategorySerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         subcategories_data = validated_data.pop('subcategories', None)
-        parent_category = validated_data.pop('parent_category', None)
-
+        parent_category = validated_data.pop(
+            'parent_category', None)
         instance.name = validated_data.get('name', instance.name)
         instance.description = validated_data.get(
             'description', instance.description)
@@ -56,3 +47,11 @@ class CategorySerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if instance.parent_category is None:
+            ret['parent_category'] = None
+        elif instance.parent_category:
+            ret['parent_category'] = instance.parent_category.id
+        return ret
