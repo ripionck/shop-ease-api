@@ -18,18 +18,24 @@ from django.contrib import admin
 from django.urls import include, path
 from django.http import JsonResponse
 
+
 def testing_root(request):
     return JsonResponse({"message": "Testing root route works."})
 
+
 urlpatterns = [
     path('api/v1/', testing_root, name='testing-root'),
-    # path('admin/', admin.site.urls),  # 
+    # path('admin/', admin.site.urls),  #
     path('api/v1/', include(('users.urls', 'users'), namespace='users')),
+    path('api/v1/', include(('categories.urls', 'categories'), namespace='categories')),
     path('api/v1/', include(('products.urls', 'products'), namespace='products')),
+    path('api/v1/', include(('reviews.urls', 'reviews'), namespace='reviews')),
     path('api/v1/', include(('cart.urls', 'cart'), namespace='cart')),
     path('api/v1/', include(('wishlist.urls', 'wishlist'), namespace='wishlist')),
     path('api/v1/', include(('orders.urls', 'orders'), namespace='orders')),
+    path('api/v1/', include(('special_offers.urls',
+         'special_offers'), namespace='special_offers')),
     path('api/v1/', include(('payments.urls', 'payments'), namespace='payments')),
+    path('api/v1/', include(('notifications.urls',
+         'notifications'), namespace='notifications')),
 ]
-
-
