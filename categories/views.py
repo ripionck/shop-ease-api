@@ -40,14 +40,16 @@ class CategoryDetailView(APIView):
         serializer = CategorySerializer(category)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def put(self, request, pk):
+    def patch(self, request, pk):
         if not request.user.is_staff:
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+
         category = self.get_object(pk)
-        serializer = CategorySerializer(category, data=request.data, partial=True)
+        serializer = CategorySerializer(
+            category, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Category updated successfully!", "category": serializer.data}, status=status.HTTP_200_OK) 
+            return Response({"message": "Category updated successfully!", "category": serializer.data}, status=status.HTTP_200_OK)
         return Response({"message": "Invalid data.", "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
@@ -56,5 +58,3 @@ class CategoryDetailView(APIView):
         category = self.get_object(pk)
         category.delete()
         return Response({"message": "Category deleted!"}, status=status.HTTP_204_NO_CONTENT)
-
-
