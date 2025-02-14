@@ -1,86 +1,78 @@
 from rest_framework import serializers
-from django.shortcuts import get_object_or_404
-from .models import *
-from reviews.serializers import ReviewSerializer
+from .models import Product, ProductImage
+from categories.models import Category
 
-class SubCategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Category
-        fields = ('id', 'name', 'description')
-        read_only_fields = ('id',)
 
-class CategorySerializer(serializers.ModelSerializer):
-    subcategories = SubCategorySerializer(many=True, required=False)
-
-    class Meta:
-        model = Category
-        fields = ('id', 'name', 'description', 'parent_category', 'subcategories', 'created_at', 'updated_at')
-        read_only_fields = ('id', 'created_at', 'updated_at')
-
-    def create(self, validated_data):
-        subcategories_data = validated_data.pop('subcategories', [])
-        category = Category.objects.create(**validated_data)
-        for subcategory in subcategories_data:
-            Category.objects.create(parent_category=category, **subcategory)
-        return category
-
-    def update(self, instance, validated_data):
-        subcategories_data = validated_data.pop('subcategories', None)
-
-        instance.name = validated_data.get('name', instance.name)
-        instance.description = validated_data.get('description', instance.description)
-        instance.parent_category = validated_data.get('parent_category', instance.parent_category)
-        instance.save()
-
-        if subcategories_data is not None:
-            instance.subcategories.all().delete()
-            for subcategory in subcategories_data:
-                Category.objects.create(parent_category=instance, **subcategory)
-
-        return instance
-    
-    
-class ProductImageUploadSerializer(serializers.ModelSerializer):
+class ProductImageSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = ProductImage
-        fields = ['id', 'image_url', 'is_main']
+        fields = ['image_url', 'is_main']
+        read_only_fields = ['image_url']
 
     def get_image_url(self, obj):
-        return obj.image if obj.image else None  
+        return obj.image.url
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    images = ProductImageUploadSerializer(many=True, read_only=True)
-    reviews = ReviewSerializer(many=True, required=False)
+    images = serializers.SerializerMethodField()
     category_id = serializers.UUIDField(write_only=True)
-    category = CategorySerializer(read_only=True)
+    category = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'description', 'price', 'discounted_price',
-            'category_id', 'category', 'images', 'color', 'brand',
-            'stock', 'rating', 'features', 'specifications', 'tags',
-            'created_at', 'updated_at', 'reviews'
-        ]
-        read_only_fields = ['rating', 'created_at', 'updated_at']
+            'id', 'name', 'category', 'description', 'price', 'discounted_price',
+            'category_id', 'brand', 'stock', 'rating', 'images',
+            'features', 'specifications', 'tags', 'created_at',
+            'updated_at']
+        read_only_fields = ['id', 'rating', 'created_at',
+                            'updated_at', 'images', 'category']
+
+    def get_images(self, obj):
+        return [image.image.url for image in obj.product_images.all()]
+
+    def get_category(self, obj):
+        return obj.category.name if obj.category else None
+
+    def validate(self, data):
+        if self.instance is None:
+            category_id = data.get('category_id')
+            try:
+                category = Category.objects.get(pk=category_id)
+                data['category'] = category
+            except Category.DoesNotExist:
+                raise serializers.ValidationError("Invalid category ID.")
+        elif 'category_id' in data:
+            category_id = data['category_id']
+            try:
+                category = Category.objects.get(pk=category_id)
+                data['category'] = category
+            except Category.DoesNotExist:
+                raise serializers.ValidationError("Invalid category ID.")
+        elif not data.get('category') and self.instance:
+            data['category'] = self.instance.category
+        return data
 
     def create(self, validated_data):
-        category_uuid = validated_data.pop('category_id')
-        category = get_object_or_404(Category, id=category_uuid)
-        validated_data['category'] = category
-        product = super().create(validated_data)
+        category = validated_data.pop('category')
 
-        reviews_data = validated_data.pop('reviews', [])
-        request = self.context.get('request')
+        product = Product.objects.create(**validated_data)
+        product.category = category
+        product.save()
 
-        if request:
-            for review_data in reviews_data:
-                review_serializer = ReviewSerializer(data=review_data, context={'request': request, 'product': product})
-                if review_serializer.is_valid(raise_exception=True):
-                    review_serializer.save()
-
-        product.update_rating()  
         return product
+
+    def update(self, instance, validated_data):
+        category = validated_data.pop('category', instance.category)
+
+        instance.category = category
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        return representation
