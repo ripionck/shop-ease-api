@@ -1,11 +1,9 @@
-from products.models import Product
-from django.core.exceptions import ObjectDoesNotExist
 from django.urls import path
-from . import views
+from .views import ReviewListView, ReviewDetailView
 
 urlpatterns = [
     path('products/<uuid:product_id>/reviews/',
-         views.ReviewListView.as_view(), name='review-list'),
+         ReviewListView.as_view(), name='review-list'),
     path('reviews/<uuid:review_id>/',
-         views.ReviewDetailView.as_view(), name='review-detail'),
+         ReviewDetailView.as_view(), name='review-detail'),
 ]

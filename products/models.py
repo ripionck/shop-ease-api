@@ -46,10 +46,10 @@ class Product(models.Model):
     def update_rating(self):
         reviews = self.reviews.all()
         if reviews.exists():
-            self.rating = sum(
-                review.rating for review in reviews) / reviews.count()
+            total_rating = sum(review.rating for review in reviews)
+            self.average_rating = total_rating / reviews.count()
         else:
-            self.rating = 0
+            self.average_rating = 0
         self.save()
 
     class Meta:
