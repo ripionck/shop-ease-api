@@ -36,5 +36,23 @@ class ReviewSerializer(serializers.ModelSerializer):
 
         review = Review.objects.create(
             product=product, user=user, **validated_data)
-        product.update_rating()  # Update the product's rating
+        # Update the product's rating
+        product.update_rating(new_rating=review.rating)
         return review
+
+    def update(self, instance, validated_data):
+        old_rating = instance.rating  # Store the old rating
+        instance = super().update(instance, validated_data)
+        product = instance.product
+        # Update the product's rating
+        product.update_rating(new_rating=instance.rating,
+                              old_rating=old_rating)
+        return instance
+
+    def delete(self, instance):
+        product = instance.product
+        old_rating = instance.rating
+        instance.delete()
+        # Update the product's rating
+        product.update_rating(old_rating=old_rating)
+        return instance

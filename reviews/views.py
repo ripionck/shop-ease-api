@@ -79,7 +79,8 @@ class ReviewDetailView(APIView):
             if review.user != request.user:
                 return Response({'detail': 'Permission denied. You can only delete your own reviews.'}, status=status.HTTP_403_FORBIDDEN)
 
-            review.delete()
+            serializer = ReviewSerializer()
+            serializer.delete(review)
             return Response({"message": "Review deleted!"}, status=status.HTTP_204_NO_CONTENT)
 
         except Exception as e:

@@ -15,18 +15,20 @@ class Product(models.Model):
         max_digits=10, decimal_places=2, help_text="Price of the product.")
     discounted_price = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True, help_text="Discounted price of the product (if applicable).")
-    category = models.ForeignKey(
-        Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='products_in_category',
-        help_text="Category of the product.")
-    subcategory = models.ForeignKey(
-        Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='products_in_subcategory',
-        help_text="Subcategory of the product (must belong to the selected category).")
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='products_in_category', help_text="Category of the product.")
+    subcategory = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='products_in_subcategory', help_text="Subcategory of the product (must belong to the selected category).")
     brand = models.CharField(max_length=255, null=True,
                              blank=True, help_text="Brand of the product.")
     stock = models.PositiveIntegerField(
         default=0, help_text="Available stock of the product.")
     rating = models.FloatField(
-        null=True, blank=True, help_text="Average rating of the product.")
+        default=0.0, help_text="Average rating of the product.")
+    total_rating_sum = models.FloatField(
+        default=0.0, help_text="Sum of all ratings for the product.")
+    total_reviews = models.PositiveIntegerField(
+        default=0, help_text="Total number of reviews for the product.")
     features = models.JSONField(
         default=list, help_text="List of features of the product.")
     specifications = models.JSONField(
@@ -43,13 +45,22 @@ class Product(models.Model):
             raise ValidationError(
                 "Subcategory must belong to the selected category.")
 
-    def update_rating(self):
-        reviews = self.reviews.all()
-        if reviews.exists():
-            total_rating = sum(review.rating for review in reviews)
-            self.average_rating = total_rating / reviews.count()
+    def update_rating(self, new_rating=None, old_rating=None):
+        """
+        Incrementally update the product's rating when a review is added, updated, or deleted.
+        """
+        if new_rating is not None:
+            self.total_rating_sum += new_rating
+            self.total_reviews += 1
+        if old_rating is not None:
+            self.total_rating_sum -= old_rating
+            self.total_reviews -= 1
+
+        if self.total_reviews > 0:
+            self.rating = self.total_rating_sum / self.total_reviews
         else:
-            self.average_rating = 0
+            self.rating = 0.0
+
         self.save()
 
     class Meta:
