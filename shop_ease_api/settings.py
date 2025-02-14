@@ -32,13 +32,13 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = False
 ALLOWED_HOSTS = [
     'shop-ease-3oxf.onrender.com',
-    'localhost',  
+    'localhost',
     '127.0.0.1',
 ]
 
 CORS_ALLOWED_ORIGINS = [
     "https://frontend.yourdomain.com",
-    "http://localhost:5173",  
+    "http://localhost:5173",
 ]
 
 APPEND_SLASH = False
@@ -84,7 +84,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    
+
 ]
 
 ROOT_URLCONF = 'shop_ease_api.urls'
@@ -149,9 +149,12 @@ DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 #     }
 # }
 
-DATABASE_URL = os.environ.get("DATABASE_URL") 
+DATABASE_URL = os.environ.get("DATABASE_URL")
 DATABASES = {
     'default': dj_database_url.parse(DATABASE_URL)
+}
+DATABASES['default']['OPTIONS'] = {
+    'sslmode': 'require',
 }
 
 # Password validation
@@ -213,7 +216,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL= os.getenv('DEFAULT_FROM_EMAIL')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
 
 # Stripe settings
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')

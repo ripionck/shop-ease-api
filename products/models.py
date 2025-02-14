@@ -6,8 +6,9 @@ from django.dispatch import receiver
 import cloudinary.uploader
 from django.db.models import Avg
 from django.core.exceptions import ValidationError
+
 from categories.models import Category
-from reviews.models import Review  # Make sure this import is correct
+from reviews.models import Review
 
 COLOR_CHOICES = [
     ('red', 'Red'),
@@ -27,14 +28,14 @@ class Product(models.Model):
     discounted_price = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True)
     category = models.ForeignKey(
-        Category, on_delete=models.CASCADE, related_name='products')
+        Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='products_in_category')
     subcategory = models.ForeignKey(Category, on_delete=models.CASCADE,
                                     related_name='products_in_subcategory', null=True, blank=True)
     brand = models.CharField(max_length=255, null=True, blank=True)
-    images = models.JSONField(default=list)
+    color = models.CharField(
+        max_length=50, choices=COLOR_CHOICES, null=True, blank=True)
     stock = models.PositiveIntegerField(default=0)
     rating = models.FloatField(null=True, blank=True)
-    reviews = models.JSONField(default=list)
     features = models.JSONField(default=list)
     specifications = models.JSONField(default=dict)
     tags = models.JSONField(default=list)
@@ -66,7 +67,7 @@ class Product(models.Model):
 class ProductImage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name='images')
+        Product, on_delete=models.CASCADE, related_name='product_images')
     image = CloudinaryField('image')
     is_main = models.BooleanField(default=False)
 
@@ -89,6 +90,6 @@ def delete_product_image_from_cloudinary(sender, instance, **kwargs):
 
 @receiver(pre_delete, sender=Product)
 def delete_product_and_images_from_cloudinary(sender, instance, **kwargs):
-    for image in instance.images.all():
+    for image in instance.product_images.all():
         if image.image and hasattr(image.image, 'public_id'):
             cloudinary.uploader.destroy(image.image.public_id)
