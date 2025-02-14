@@ -64,12 +64,12 @@ INSTALLED_APPS = [
     'users',
     'categories',
     'products',
+    'offers',
     'reviews',
     'orders',
     'cart',
     'wishlist',
     'payments',
-    'special_offers',
     'notifications',
 ]
 

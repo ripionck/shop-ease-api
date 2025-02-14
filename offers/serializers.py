@@ -4,7 +4,7 @@ from .models import Offer, Category
 
 
 class OfferSerializer(serializers.ModelSerializer):
-    category = CategorySerializer()(read_only=True)
+    category = CategorySerializer(read_only=True)
     category_id = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.all(),
         source='category',
