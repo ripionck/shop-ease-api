@@ -24,17 +24,16 @@ def testing_root(request):
 
 
 urlpatterns = [
-    path('/', testing_root, name='testing-root'),
-    # path('admin/', admin.site.urls),  #
-    path('api/v1/', include(('users.urls', 'users'), namespace='users')),
-    path('api/v1/', include(('categories.urls', 'categories'), namespace='categories')),
-    path('api/v1/', include(('products.urls', 'products'), namespace='products')),
-    path('api/v1/', include(('reviews.urls', 'reviews'), namespace='reviews')),
-    path('api/v1/', include(('cart.urls', 'cart'), namespace='cart')),
-    path('api/v1/', include(('wishlist.urls', 'wishlist'), namespace='wishlist')),
-    path('api/v1/', include(('orders.urls', 'orders'), namespace='orders')),
-    path('api/v1/', include(('offers.urls', 'offers'), namespace='offers')),
-    path('api/v1/', include(('payments.urls', 'payments'), namespace='payments')),
-    path('api/v1/', include(('notifications.urls',
-         'notifications'), namespace='notifications')),
+    path('api/v1/', testing_root, name='testing-root'),
+    # path('admin/', admin.site.urls),
+    path('api/v1/', include('users.urls', namespace='users')),
+    path('api/v1/', include('categories.urls', namespace='categories')),
+    path('api/v1/', include('products.urls', namespace='products')),
+    path('api/v1/', include('reviews.urls', namespace='reviews')),
+    path('api/v1/', include('cart.urls', namespace='cart')),
+    path('api/v1/', include('wishlist.urls', namespace='wishlist')),
+    path('api/v1/', include('orders.urls', namespace='orders')),
+    path('api/v1/', include('offers.urls', namespace='offers')),
+    path('api/v1/', include('payments.urls', namespace='payments')),
+    path('api/v1/', include('notifications.urls', namespace='notifications')),
 ]
