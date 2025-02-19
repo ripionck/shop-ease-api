@@ -1,6 +1,3 @@
-Below is a `README.md` file for the ShopEase API documentation. This file provides an overview of the API endpoints, their usage, and examples for interacting with the API.
-
----
 
 # ShopEase API Documentation
 
