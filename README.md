@@ -387,11 +387,3 @@ To test the API, use the following endpoint:
 
 ## License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
-For any questions or issues, please contact the development team.
-
----
-
-This `README.md` file provides a comprehensive guide to using the ShopEase API. You can customize it further based on your specific requirements.
