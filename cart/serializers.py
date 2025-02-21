@@ -2,11 +2,14 @@ from rest_framework import serializers
 from products.models import Product
 from .models import Cart, CartItem
 
+
 class ProductCartSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(source='product.id', read_only=True)
     name = serializers.CharField(source='product.name')
-    color = serializers.CharField(source='product.color', allow_null=True, allow_blank=True)
-    price = serializers.DecimalField(source='product.price', max_digits=10, decimal_places=2)
+    color = serializers.CharField(
+        source='product.color', allow_null=True, allow_blank=True)
+    price = serializers.DecimalField(
+        source='product.price', max_digits=10, decimal_places=2)
     image = serializers.SerializerMethodField()
     quantity = serializers.IntegerField()
 
@@ -15,7 +18,7 @@ class ProductCartSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'color', 'price', 'image', 'quantity']
 
     def get_image(self, obj):
-        main_image = obj.product.images.filter(is_main=True).first()
+        main_image = obj.product.product_images.filter(is_main=True).first()
         return main_image.image.url if main_image and main_image.image else None
 
 
@@ -56,14 +59,16 @@ class CartItemUpdateSerializer(serializers.ModelSerializer):
         product_id = data.get('product_id')
 
         if quantity is None and product_id is None:
-            raise serializers.ValidationError("At least one of 'quantity' or 'product_id' must be provided.")
+            raise serializers.ValidationError(
+                "At least one of 'quantity' or 'product_id' must be provided.")
 
         if product_id is not None:
             if not Product.objects.filter(id=product_id).exists():
                 raise serializers.ValidationError("Product does not exist.")
             cart = self.instance.cart
             if CartItem.objects.filter(cart=cart, product_id=product_id).exclude(pk=self.instance.pk).exists():
-                raise serializers.ValidationError("This Product is already in the cart.")
+                raise serializers.ValidationError(
+                    "This Product is already in the cart.")
 
         return data
 

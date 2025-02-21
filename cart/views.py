@@ -28,22 +28,26 @@ class AddToCartView(APIView):
         product_id = serializer.validated_data['product_id']
         quantity = serializer.validated_data['quantity']
 
-        product = get_object_or_404(Product, id=product_id)
+        product = get_object_or_404(
+            Product, id=serializer.validated_data['product_id'])
 
         cart, _ = Cart.objects.get_or_create(user=request.user)
-        existing_cart_item = CartItem.objects.filter(cart=cart, product=product).first()
+        existing_cart_item = CartItem.objects.filter(
+            cart=cart, product=product).first()
 
         if existing_cart_item:
             existing_cart_item.quantity += quantity
             existing_cart_item.save()
-            cart_serializer = CartSerializer(cart, context={'request': request})
+            cart_serializer = CartSerializer(
+                cart, context={'request': request})
             return Response({
                 "success": True,
                 "message": "Product quantity updated in cart",
                 "cart": cart_serializer.data
             }, status=status.HTTP_200_OK)
 
-        cart_item = CartItem.objects.create(cart=cart, product=product, quantity=quantity)
+        cart_item = CartItem.objects.create(
+            cart=cart, product=product, quantity=quantity)
         cart_serializer = CartSerializer(cart, context={'request': request})
 
         return Response({
@@ -63,10 +67,12 @@ class UpdateCartItemView(APIView):
         except CartItem.DoesNotExist:
             return Response({"success": False, "message": "Cart item not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = CartItemUpdateSerializer(cart_item, data=request.data, partial=True)
+        serializer = CartItemUpdateSerializer(
+            cart_item, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            cart_serializer = CartSerializer(cart, context={'request': request})
+            cart_serializer = CartSerializer(
+                cart, context={'request': request})
             return Response({
                 "success": True,
                 "message": "Cart item updated successfully",
