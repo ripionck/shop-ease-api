@@ -2,6 +2,7 @@ from rest_framework import serializers
 from products.models import Product
 from .models import Wishlist
 
+
 class WishlistProductSerializer(serializers.Serializer):
     product_id = serializers.UUIDField()
 
@@ -10,22 +11,24 @@ class WishlistProductSerializer(serializers.Serializer):
             raise serializers.ValidationError("Product does not exist.")
         return value
 
+
 class WishlistSerializer(serializers.ModelSerializer):
     products = serializers.SerializerMethodField()
 
     class Meta:
         model = Wishlist
-        fields = ['products', 'created_at']  
+        fields = ['products', 'created_at']
         read_only_fields = ['created_at']
 
     def get_products(self, obj):
         product_data = []
         for product in obj.products.all():
-            main_image = product.images.filter(is_main=True).first()
+            # Use the correct related_name 'product_images'
+            main_image = product.product_images.filter(is_main=True).first()
             product_data.append({
                 "product_id": product.id,
                 "name": product.name,
                 "price": product.price,
-                "thumbnail": main_image.image.url if main_image else None
+                "image": main_image.image.url if main_image else None
             })
         return product_data
