@@ -8,14 +8,15 @@ from .models import Order, OrderItem
 from products.models import Product
 from .serializers import OrderSerializer
 
+
 class ListOrdersView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if request.user.is_staff:  
-            orders = Order.objects.all()  
+        if request.user.is_staff:
+            orders = Order.objects.all()
         else:
-            orders = Order.objects.filter(user=request.user)  
+            orders = Order.objects.filter(user=request.user)
         if not orders:
             message = "No orders found." if request.user.is_staff else "You haven't placed any orders yet."
             return Response({
@@ -38,13 +39,12 @@ class CreateOrderView(APIView):
         user = request.user
         data = request.data
 
-        shipping_address = data.get('shipping_address') 
-        payment_method = data.get('payment_method')  
-        products_data = data.get('products', [])  
+        shipping_address = data.get('shipping_address')
+        products_data = data.get('products', [])
 
-        if not shipping_address or not payment_method or not products_data:
+        if not shipping_address or not products_data:
             return Response(
-                {"success": False, "message": "shipping_address, payment_method, and products are required."},
+                {"success": False, "message": "shipping_address and products are required."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -54,12 +54,13 @@ class CreateOrderView(APIView):
                 order_items = []
 
                 for product_data in products_data:
-                    product_id = product_data.get('product_id')  
+                    product_id = product_data.get('product_id')
                     quantity = product_data.get('quantity')
 
                     if not product_id or not quantity:
                         return Response(
-                            {"success": False, "message": "Each product must have 'product_id' and 'quantity'."},
+                            {"success": False,
+                                "message": "Each product must have 'product_id' and 'quantity'."},
                             status=status.HTTP_400_BAD_REQUEST
                         )
 
@@ -72,11 +73,11 @@ class CreateOrderView(APIView):
                     user=user,
                     total_amount=total_amount,
                     shipping_address=shipping_address,
-                    payment_method=payment_method
                 )
 
                 for product, quantity, price in order_items:
-                    OrderItem.objects.create(order=order, product=product, quantity=quantity, price=price)
+                    OrderItem.objects.create(
+                        order=order, product=product, quantity=quantity, price=price)
 
                 serializer = OrderSerializer(order)
                 return Response({
@@ -140,20 +141,21 @@ class OrderDetailsView(APIView):
             "success": True,
             "order": serializer.data
         }, status=status.HTTP_200_OK)
-    
+
+
 class CancelOrderView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def patch(self, request, order_id):  
-        order = get_object_or_404(Order, id=order_id, user=request.user)  
+    def patch(self, request, order_id):
+        order = get_object_or_404(Order, id=order_id, user=request.user)
 
-        if order.status == 'cancelled':  
+        if order.status == 'cancelled':
             return Response({
                 "success": False,
                 "message": "This order is already cancelled."
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        if order.status in ('shipped', 'delivered'): 
+        if order.status in ('shipped', 'delivered'):
             return Response({
                 "success": False,
                 "message": "This order cannot be cancelled as it has already been shipped or delivered."

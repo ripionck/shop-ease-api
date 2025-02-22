@@ -1,3 +1,4 @@
+
 from rest_framework import serializers
 from products.models import Product
 from .models import Cart, CartItem
@@ -6,8 +7,8 @@ from .models import Cart, CartItem
 class ProductCartSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(source='product.id', read_only=True)
     name = serializers.CharField(source='product.name')
-    color = serializers.CharField(
-        source='product.color', allow_null=True, allow_blank=True)
+    brand = serializers.CharField(
+        source='product.brand', allow_null=True, allow_blank=True)
     price = serializers.DecimalField(
         source='product.price', max_digits=10, decimal_places=2)
     image = serializers.SerializerMethodField()
@@ -15,7 +16,7 @@ class ProductCartSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CartItem
-        fields = ['id', 'name', 'color', 'price', 'image', 'quantity']
+        fields = ['id', 'name', 'brand', 'price', 'image', 'quantity']
 
     def get_image(self, obj):
         main_image = obj.product.product_images.filter(is_main=True).first()
@@ -48,7 +49,7 @@ class AddToCartSerializer(serializers.Serializer):
 
 class CartItemUpdateSerializer(serializers.ModelSerializer):
     quantity = serializers.IntegerField(min_value=0, required=False)
-    product_id = serializers.UUIDField(required=False, allow_null=True)
+    product_id = serializers.UUIDField(required=False)
 
     class Meta:
         model = CartItem
@@ -68,7 +69,7 @@ class CartItemUpdateSerializer(serializers.ModelSerializer):
             cart = self.instance.cart
             if CartItem.objects.filter(cart=cart, product_id=product_id).exclude(pk=self.instance.pk).exists():
                 raise serializers.ValidationError(
-                    "This Product is already in the cart.")
+                    "This product is already in the cart.")
 
         return data
 
@@ -76,12 +77,19 @@ class CartItemUpdateSerializer(serializers.ModelSerializer):
         quantity = validated_data.get('quantity')
         product_id = validated_data.get('product_id')
 
-        if quantity is not None:
-            instance.quantity = quantity
+        # Handle quantity zero or negative by deleting the item
+        if quantity is not None and quantity <= 0:
+            instance.delete()
+            return instance
 
+        # Update product if provided
         if product_id is not None:
             product = Product.objects.get(id=product_id)
             instance.product = product
+
+        # Update quantity if provided
+        if quantity is not None:
+            instance.quantity = quantity
 
         instance.save()
         return instance
