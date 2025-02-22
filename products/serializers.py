@@ -8,17 +8,18 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductImage
-        fields = ['image_url', 'is_main']
-        read_only_fields = ['image_url']
+        fields = ['id', 'image_url', 'is_main']
+        read_only_fields = ['id', 'image_url']
 
     def get_image_url(self, obj):
         return obj.image.url
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    images = ProductImageSerializer(many=True, read_only=True)
+    images = serializers.SerializerMethodField()
     category_id = serializers.UUIDField(write_only=True)
     category = serializers.StringRelatedField(read_only=True)
+    specifications = serializers.JSONField()
 
     class Meta:
         model = Product
@@ -33,9 +34,14 @@ class ProductSerializer(serializers.ModelSerializer):
             'updated_at', 'images', 'category'
         ]
 
-    def validate_category_id(self, value):
-        if not Category.objects.filter(pk=value).exists():
-            raise serializers.ValidationError("Invalid category ID.")
+    def get_images(self, obj):
+        images = obj.product_images.all()
+        return ProductImageSerializer(images, many=True).data
+
+    def validate_specifications(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError(
+                "Specifications must be a JSON object")
         return value
 
     def create(self, validated_data):

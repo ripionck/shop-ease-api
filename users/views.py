@@ -15,7 +15,8 @@ class UserRegistrationView(APIView):
             user = serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
+
 class UserLoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -31,22 +32,23 @@ class UserLoginView(APIView):
                 'access': str(refresh.access_token)
             }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
+
 class UserProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, format=None):
         serializer = UserSerializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
-    def put(self, request, format= None):
-        serializer = UserSerializer(request.user, data=request.data, partial=True)
+
+    def patch(self, request, format=None):
+        serializer = UserSerializer(
+            request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     def delete(self, request, format=None):
         request.user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
