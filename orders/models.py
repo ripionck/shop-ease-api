@@ -3,6 +3,7 @@ from django.db import models
 from django.conf import settings
 from products.models import Product
 
+
 class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -12,18 +13,13 @@ class Order(models.Model):
         ('cancelled', 'Cancelled'),
     ]
 
-    PAYMENT_METHODS = [
-        ('credit_card', 'Credit Card'),
-        ('paypal', 'PayPal'),
-        ('cod', 'Cash on Delivery')
-    ]
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,
+                             on_delete=models.CASCADE)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default='pending')
     shipping_address = models.JSONField()
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -36,10 +32,11 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
+    order = models.ForeignKey(
+        Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)  
+    price = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

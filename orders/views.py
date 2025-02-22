@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from django.db import transaction
+
+from cart.models import CartItem
 from .models import Order, OrderItem
 from products.models import Product
 from .serializers import OrderSerializer
@@ -37,57 +39,54 @@ class CreateOrderView(APIView):
 
     def post(self, request):
         user = request.user
-        data = request.data
+        serializer = OrderSerializer(
+            data=request.data, context={'request': request})
 
-        shipping_address = data.get('shipping_address')
-        products_data = data.get('products', [])
-
-        if not shipping_address or not products_data:
-            return Response(
-                {"success": False, "message": "shipping_address and products are required."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            with transaction.atomic():
-                total_amount = 0
-                order_items = []
-
-                for product_data in products_data:
-                    product_id = product_data.get('product_id')
-                    quantity = product_data.get('quantity')
-
-                    if not product_id or not quantity:
+        if serializer.is_valid():
+            try:
+                with transaction.atomic():
+                    # Get cart items
+                    cart_items = CartItem.objects.filter(cart__user=user)
+                    if not cart_items.exists():
                         return Response(
-                            {"success": False,
-                                "message": "Each product must have 'product_id' and 'quantity'."},
+                            {"detail": "Cart is empty"},
                             status=status.HTTP_400_BAD_REQUEST
                         )
 
-                    product = get_object_or_404(Product, id=product_id)
-                    price = product.price
-                    total_amount += price * quantity
-                    order_items.append((product, quantity, price))
+                    # Calculate total amount
+                    total_amount = sum(item.product.price *
+                                       item.quantity for item in cart_items)
 
-                order = Order.objects.create(
-                    user=user,
-                    total_amount=total_amount,
-                    shipping_address=shipping_address,
+                    # Create order
+                    order = Order.objects.create(
+                        user=user,
+                        total_amount=total_amount,
+                        shipping_address=request.data.get(
+                            'shipping_address', {})
+                    )
+
+                    # Create order items from cart
+                    order_items = [
+                        OrderItem(
+                            order=order,
+                            product=item.product,
+                            quantity=item.quantity,
+                            price=item.product.price
+                        ) for item in cart_items
+                    ]
+                    OrderItem.objects.bulk_create(order_items)
+
+                    # Clear cart
+                    cart_items.delete()
+
+                    return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+
+            except Exception as e:
+                return Response(
+                    {"detail": str(e)},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
-
-                for product, quantity, price in order_items:
-                    OrderItem.objects.create(
-                        order=order, product=product, quantity=quantity, price=price)
-
-                serializer = OrderSerializer(order)
-                return Response({
-                    "success": True,
-                    "message": "Order created successfully.",
-                    "order": serializer.data
-                }, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            return Response({"success": False, "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UpdateOrderStatusView(APIView):
