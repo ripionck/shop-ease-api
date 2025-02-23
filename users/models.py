@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 import uuid
 from cloudinary.models import CloudinaryField
 
+
 class User(AbstractUser):
     USER = 'user'
     ADMIN = 'admin'
@@ -10,7 +11,6 @@ class User(AbstractUser):
         (USER, 'User'),
         (ADMIN, 'Admin')
     ]
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default=USER)
@@ -27,7 +27,6 @@ class User(AbstractUser):
     EMAIL_FIELD = 'email'
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = []
-
 
     def __str__(self):
         return self.email

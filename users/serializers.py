@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import User
 
+
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
 
@@ -27,6 +28,7 @@ class UserSerializer(serializers.ModelSerializer):
             user.set_password(password)
         user.save()
         return user
+
 
 class UserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
