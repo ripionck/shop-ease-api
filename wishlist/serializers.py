@@ -29,6 +29,7 @@ class WishlistSerializer(serializers.ModelSerializer):
                 "product_id": product.id,
                 "name": product.name,
                 "price": product.price,
+                "is_active": product.is_active,
                 "image": main_image.image.url if main_image else None
             })
         return product_data
