@@ -13,7 +13,7 @@ from rest_framework.pagination import PageNumberPagination
 
 
 class CustomPagination(PageNumberPagination):
-    page_size = 10
+    page_size = 9
     page_size_query_param = 'page_size'
     max_page_size = 100
 
@@ -25,12 +25,19 @@ class ProductListAPIView(APIView):
 
     def get(self, request):
         try:
+            # Extract query parameters
             search_term = request.query_params.get('search', '')
-            category_id = request.query_params.get('category')
-            ordering = request.query_params.get('ordering')
+            category_ids = request.query_params.getlist(
+                'category[]')  # For array-like syntax
+            min_price = request.query_params.get('min_price')
+            max_price = request.query_params.get('max_price')
+            rating = request.query_params.get('rating')
+            sort = request.query_params.get('sort')
 
+            # Base queryset
             queryset = Product.objects.all()
 
+            # Apply filters
             if search_term:
                 queryset = queryset.filter(
                     Q(name__icontains=search_term) |
@@ -38,16 +45,56 @@ class ProductListAPIView(APIView):
                     Q(category__name__icontains=search_term)
                 )
 
-            if category_id:
-                queryset = queryset.filter(category__id=category_id)
+            if category_ids:
+                # Filter by multiple categories
+                queryset = queryset.filter(category__id__in=category_ids)
 
-            if ordering:
-                queryset = queryset.order_by(ordering)
+            if min_price:
+                try:
+                    min_price = float(min_price)
+                    queryset = queryset.filter(price__gte=min_price)
+                except ValueError:
+                    return Response({
+                        "success": False,
+                        "error": "Invalid value for min_price."
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+            if max_price:
+                try:
+                    max_price = float(max_price)
+                    queryset = queryset.filter(price__lte=max_price)
+                except ValueError:
+                    return Response({
+                        "success": False,
+                        "error": "Invalid value for max_price."
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+            if rating:
+                try:
+                    rating_values = [int(r)
+                                     for r in rating.split(',') if r.isdigit()]
+                    if rating_values:
+                        queryset = queryset.filter(rating__in=rating_values)
+                except Exception:
+                    return Response({
+                        "success": False,
+                        "error": "Invalid value for rating."
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Apply sorting
+            if sort:
+                if sort == 'price-low-high':
+                    queryset = queryset.order_by('price')
+                elif sort == 'price-high-low':
+                    queryset = queryset.order_by('-price')
+                elif sort == 'rating':
+                    queryset = queryset.order_by('-rating')
+                elif sort == 'featured':
+                    queryset = queryset.order_by('-created_at')
 
             # Paginate the queryset
             paginator = self.pagination_class()
             paginated_queryset = paginator.paginate_queryset(queryset, request)
-
             serializer = ProductSerializer(paginated_queryset, many=True)
 
             return paginator.get_paginated_response({
