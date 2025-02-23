@@ -2,12 +2,10 @@ from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
-
 from cart.models import CartItem
 from .models import Order, OrderItem
-from products.models import Product
 from .serializers import OrderSerializer
 
 
@@ -90,7 +88,7 @@ class CreateOrderView(APIView):
 
 
 class UpdateOrderStatusView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAuthenticated]
 
     def patch(self, request, order_id):
         order = get_object_or_404(Order, id=order_id)
