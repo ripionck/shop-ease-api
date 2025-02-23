@@ -37,7 +37,7 @@ ALLOWED_HOSTS = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    "https://frontend.yourdomain.com",
+    "https://shop-ease-rho-wheat.vercel.app",
     "http://localhost:5173",
 ]
 
