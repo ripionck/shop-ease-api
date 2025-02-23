@@ -8,7 +8,7 @@ Welcome to the ShopEase API documentation. This API allows you to manage users, 
 ## Base URL
 The base URL for all API endpoints is:
 ```
-http://127.0.0.1:8000/api/v1/
+(https://shop-ease-3oxf.onrender.com/api/v1/)
 ```
 
 ---
