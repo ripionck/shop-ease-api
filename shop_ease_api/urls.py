@@ -24,7 +24,7 @@ def testing_root(request):
 
 
 urlpatterns = [
-    path('api/v1/', testing_root, name='testing-root'),
+    path('', testing_root, name='testing-root'),
     # path('admin/', admin.site.urls),
     path('api/v1/', include('users.urls', namespace='users')),
     path('api/v1/', include('categories.urls', namespace='categories')),
