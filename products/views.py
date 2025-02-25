@@ -1,3 +1,6 @@
+from django.core.cache import cache
+from django.utils.http import urlencode
+import hashlib
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -18,6 +21,19 @@ class CustomPagination(PageNumberPagination):
     max_page_size = 100
 
 
+def generate_cache_key(base_key, request):
+    """Generate unique cache key from request parameters"""
+    params = urlencode(sorted(request.query_params.items()))
+    key_hash = hashlib.md5(params.encode()).hexdigest()
+    return f"{base_key}:{key_hash}"
+
+
+def invalidate_product_caches():
+    """Invalidate all product-related caches"""
+    cache.delete_pattern("product_list:*")  # Requires redis-py >= 3.0
+    cache.delete_pattern("product_detail:*")
+
+
 class ProductListAPIView(APIView):
     permission_classes = [IsAdminOrReadOnly]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -25,10 +41,17 @@ class ProductListAPIView(APIView):
 
     def get(self, request):
         try:
+            # Generate unique cache key based on query parameters
+            cache_key = generate_cache_key("product_list", request)
+            cached_data = cache.get(cache_key)
+
+            # Return cached data if available
+            if cached_data:
+                return Response(cached_data)
+
             # Extract query parameters
             search_term = request.query_params.get('search', '')
-            category_ids = request.query_params.getlist(
-                'category[]')  # For array-like syntax
+            category_ids = request.query_params.getlist('category[]')
             min_price = request.query_params.get('min_price')
             max_price = request.query_params.get('max_price')
             rating = request.query_params.get('rating')
@@ -46,7 +69,6 @@ class ProductListAPIView(APIView):
                 )
 
             if category_ids:
-                # Filter by multiple categories
                 queryset = queryset.filter(category__id__in=category_ids)
 
             if min_price:
@@ -97,11 +119,18 @@ class ProductListAPIView(APIView):
             paginated_queryset = paginator.paginate_queryset(queryset, request)
             serializer = ProductSerializer(paginated_queryset, many=True)
 
-            return paginator.get_paginated_response({
+            # Build response data
+            response_data = {
                 "success": True,
                 "products": serializer.data,
                 "count": queryset.count(),
-            })
+            }
+
+            # Cache the response for 15 minutes
+            cache.set(cache_key, response_data, timeout=900)
+
+            # Return paginated response
+            return paginator.get_paginated_response(response_data)
 
         except Exception as e:
             return Response({
@@ -123,6 +152,8 @@ class ProductListAPIView(APIView):
         serializer = ProductSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
+            # Invalidate all product caches after creation
+            invalidate_product_caches()
             return Response({
                 "success": True,
                 "message": "Product created successfully",
@@ -146,8 +177,20 @@ class ProductDetailAPIView(APIView):
             raise Http404
 
     def get(self, request, pk):
+        cache_key = f"product_detail:{pk}"
+        cached_data = cache.get(cache_key)
+
+        # Return cached data if available
+        if cached_data:
+            return Response({"success": True, "product": cached_data})
+
+        # Fetch product from database
         product = self.get_object(pk)
         serializer = ProductSerializer(product)
+
+        # Cache the product data for 15 minutes
+        cache.set(cache_key, serializer.data, timeout=900)
+
         return Response({"success": True, "product": serializer.data})
 
     def patch(self, request, pk):
@@ -165,6 +208,9 @@ class ProductDetailAPIView(APIView):
 
         if serializer.is_valid():
             serializer.save()
+            # Invalidate caches for this product and list views
+            cache.delete(f"product_detail:{pk}")
+            invalidate_product_caches()
             return Response({
                 "success": True,
                 "message": "Product updated successfully",
@@ -184,6 +230,9 @@ class ProductDetailAPIView(APIView):
             raise PermissionDenied("Only admin users can delete products")
 
         product.delete()
+        # Invalidate related caches
+        cache.delete(f"product_detail:{pk}")
+        invalidate_product_caches()
         return Response({
             "success": True,
             "message": "Product deleted successfully"
@@ -233,6 +282,10 @@ class ProductImageAPIView(APIView):
                 created_images.append(product_image)
 
             serializer = ProductImageSerializer(created_images, many=True)
+
+            # Invalidate product caches after adding images
+            cache.delete(f"product_detail:{product_id}")
+            invalidate_product_caches()
 
             return Response({
                 "success": True,
