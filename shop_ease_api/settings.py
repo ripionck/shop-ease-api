@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'cloudinary',
     'cloudinary_storage',
     'corsheaders',
+    'drf_yasg',
 
     'core',
     'users',
@@ -78,6 +79,8 @@ INSTALLED_APPS = [
     'payments',
     'notifications',
 ]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 AUTH_USER_MODEL = 'users.User'
 

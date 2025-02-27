@@ -17,6 +17,19 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.http import JsonResponse
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+from rest_framework import permissions
+
+schema_view = get_schema_view(
+    openapi.Info(
+        title="ShopEase",
+        default_version='v1',
+        description="Modern e-commerce system seamlessly manages products, wishlists, carts, and orders, with a user-friendly interface."
+    ),
+    public=True,
+    permission_classes=(permissions.AllowAny,),
+)
 
 
 def testing_root(request):
@@ -25,7 +38,19 @@ def testing_root(request):
 
 urlpatterns = [
     path('', testing_root, name='testing-root'),
+
+    # Swagger documentation routes
+    path('swagger<format>/', schema_view.without_ui(cache_timeout=0),
+         name='schema-json'),
+    path('swagger/', schema_view.with_ui('swagger',
+         cache_timeout=0), name='schema-swagger-ui'),
+    path('redoc/', schema_view.with_ui('redoc',
+         cache_timeout=0), name='schema-redoc'),
+
+    # Admin (commented out but available if needed)
     # path('admin/', admin.site.urls),
+
+    # API versioned routes
     path('api/v1/', include('users.urls', namespace='users')),
     path('api/v1/', include('categories.urls', namespace='categories')),
     path('api/v1/', include('products.urls', namespace='products')),
