@@ -73,7 +73,7 @@ class ProductListAPIView(APIView):
                 except ValueError:
                     return Response({
                         "success": False,
-                        "error": "Invalid value for min_price."
+                        "message": "Invalid minimum price value."
                     }, status=status.HTTP_400_BAD_REQUEST)
 
             if max_price:
@@ -83,7 +83,7 @@ class ProductListAPIView(APIView):
                 except ValueError:
                     return Response({
                         "success": False,
-                        "error": "Invalid value for max_price."
+                        "message": "Invalid maximum price value."
                     }, status=status.HTTP_400_BAD_REQUEST)
 
             if rating:
@@ -95,7 +95,7 @@ class ProductListAPIView(APIView):
                 except Exception:
                     return Response({
                         "success": False,
-                        "error": "Invalid value for rating."
+                        "message": "Invalid rating value."
                     }, status=status.HTTP_400_BAD_REQUEST)
 
             if sort:
@@ -114,6 +114,7 @@ class ProductListAPIView(APIView):
 
             response_data = {
                 "success": True,
+                "message": "Products retrieved successfully.",
                 "products": serializer.data,
                 "count": queryset.count(),
             }
@@ -124,12 +125,13 @@ class ProductListAPIView(APIView):
         except Exception as e:
             return Response({
                 "success": False,
+                "message": "An error occurred while retrieving products.",
                 "error": str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request):
         if not request.user.is_staff:
-            raise PermissionDenied("Only admin users can create products")
+            raise PermissionDenied("Only admin users can create products.")
 
         if request.content_type == 'application/json':
             data = request.data
@@ -142,13 +144,13 @@ class ProductListAPIView(APIView):
             invalidate_product_caches()
             return Response({
                 "success": True,
-                "message": "Product created successfully",
+                "message": "Product created successfully.",
                 "product": serializer.data
             }, status=status.HTTP_201_CREATED)
 
         return Response({
             "success": False,
-            "message": "Invalid product data",
+            "message": "Invalid product data.",
             "errors": serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
@@ -167,18 +169,18 @@ class ProductDetailAPIView(APIView):
         cached_data = cache.get(cache_key)
 
         if cached_data:
-            return Response({"success": True, "product": cached_data})
+            return Response({"success": True, "message": "Product retrieved successfully.", "product": cached_data})
 
         product = self.get_object(pk)
         serializer = ProductSerializer(product)
         cache.set(cache_key, serializer.data, timeout=900)
-        return Response({"success": True, "product": serializer.data})
+        return Response({"success": True, "message": "Product retrieved successfully.", "product": serializer.data})
 
     def patch(self, request, pk):
         product = self.get_object(pk)
 
         if not request.user.is_staff:
-            raise PermissionDenied("Only admin users can update products")
+            raise PermissionDenied("Only admin users can update products.")
 
         serializer = ProductSerializer(
             product,
@@ -193,13 +195,13 @@ class ProductDetailAPIView(APIView):
             invalidate_product_caches()
             return Response({
                 "success": True,
-                "message": "Product updated successfully",
+                "message": "Product updated successfully.",
                 "product": serializer.data
             })
 
         return Response({
             "success": False,
-            "message": "Update failed",
+            "message": "Failed to update product.",
             "errors": serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
@@ -207,14 +209,14 @@ class ProductDetailAPIView(APIView):
         product = self.get_object(pk)
 
         if not request.user.is_staff:
-            raise PermissionDenied("Only admin users can delete products")
+            raise PermissionDenied("Only admin users can delete products.")
 
         product.delete()
         cache.delete(f"product_detail:{pk}")
         invalidate_product_caches()
         return Response({
             "success": True,
-            "message": "Product deleted successfully"
+            "message": "Product deleted successfully."
         }, status=status.HTTP_204_NO_CONTENT)
 
 
@@ -225,7 +227,7 @@ class ProductImageAPIView(APIView):
     def post(self, request, product_id):
         try:
             if not request.user.is_staff:
-                raise PermissionDenied("Only admin users can add images")
+                raise PermissionDenied("Only admin users can add images.")
 
             product = Product.objects.get(id=product_id)
             images = request.FILES.getlist('image')
@@ -233,7 +235,7 @@ class ProductImageAPIView(APIView):
             if not images:
                 return Response({
                     "success": False,
-                    "error": "No image files provided"
+                    "message": "No image files provided."
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             main_index = int(request.data.get('main_image_index', 0))
@@ -264,22 +266,24 @@ class ProductImageAPIView(APIView):
 
             return Response({
                 "success": True,
-                "message": "Images added successfully",
+                "message": "Images added successfully.",
                 "images": serializer.data
             }, status=status.HTTP_201_CREATED)
 
         except Product.DoesNotExist:
             return Response({
                 "success": False,
-                "error": "Product not found"
+                "message": "Product not found."
             }, status=status.HTTP_404_NOT_FOUND)
         except ValidationError as e:
             return Response({
                 "success": False,
+                "message": "Validation error.",
                 "error": str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({
                 "success": False,
+                "message": "An error occurred while adding images.",
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
