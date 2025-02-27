@@ -29,17 +29,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = True
-# ALLOWED_HOSTS = [
-#     '*'
-# ]
-
-DEBUG = False
+DEBUG = True
 ALLOWED_HOSTS = [
-    'shop-ease-3oxf.onrender.com',
-    'localhost',
-    '127.0.0.1',
+    '*'
 ]
+
+# DEBUG = False
+# ALLOWED_HOSTS = [
+#     'shop-ease-3oxf.onrender.com',
+#     'localhost',
+#     '127.0.0.1',
+# ]
 
 CORS_ALLOWED_ORIGINS = [
     "https://shop-ease-rho-wheat.vercel.app",
@@ -167,7 +167,6 @@ DATABASES = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        # Use database 1
         "LOCATION": os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1'),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
