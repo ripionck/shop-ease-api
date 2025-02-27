@@ -25,12 +25,18 @@ class UserLoginView(APIView):
         if serializer.is_valid():
             user = serializer.validated_data['user']
             update_last_login(None, user)
+
+            # Include user role in response
+            user_data = UserSerializer(user).data
+
             refresh = RefreshToken.for_user(user)
             return Response({
                 'message': 'Login successful.',
+                'user': user_data,
                 'refresh': str(refresh),
                 'access': str(refresh.access_token)
             }, status=status.HTTP_200_OK)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

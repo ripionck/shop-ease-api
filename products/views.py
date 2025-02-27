@@ -41,15 +41,12 @@ class ProductListAPIView(APIView):
 
     def get(self, request):
         try:
-            # Generate unique cache key based on query parameters
             cache_key = generate_cache_key("product_list", request)
             cached_data = cache.get(cache_key)
 
-            # Return cached data if available
             if cached_data:
                 return Response(cached_data)
 
-            # Extract query parameters
             search_term = request.query_params.get('search', '')
             category_ids = request.query_params.getlist('category[]')
             min_price = request.query_params.get('min_price')
@@ -57,10 +54,8 @@ class ProductListAPIView(APIView):
             rating = request.query_params.get('rating')
             sort = request.query_params.get('sort')
 
-            # Base queryset
             queryset = Product.objects.all()
 
-            # Apply filters
             if search_term:
                 queryset = queryset.filter(
                     Q(name__icontains=search_term) |
@@ -103,7 +98,6 @@ class ProductListAPIView(APIView):
                         "error": "Invalid value for rating."
                     }, status=status.HTTP_400_BAD_REQUEST)
 
-            # Apply sorting
             if sort:
                 if sort == 'price-low-high':
                     queryset = queryset.order_by('price')
@@ -114,22 +108,17 @@ class ProductListAPIView(APIView):
                 elif sort == 'featured':
                     queryset = queryset.order_by('-created_at')
 
-            # Paginate the queryset
             paginator = self.pagination_class()
             paginated_queryset = paginator.paginate_queryset(queryset, request)
             serializer = ProductSerializer(paginated_queryset, many=True)
 
-            # Build response data
             response_data = {
                 "success": True,
                 "products": serializer.data,
                 "count": queryset.count(),
             }
 
-            # Cache the response for 15 minutes
             cache.set(cache_key, response_data, timeout=900)
-
-            # Return paginated response
             return paginator.get_paginated_response(response_data)
 
         except Exception as e:
@@ -142,17 +131,14 @@ class ProductListAPIView(APIView):
         if not request.user.is_staff:
             raise PermissionDenied("Only admin users can create products")
 
-        # Handle JSON data
         if request.content_type == 'application/json':
             data = request.data
-        # Handle form-data
         else:
             data = request.data.dict()
 
         serializer = ProductSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
-            # Invalidate all product caches after creation
             invalidate_product_caches()
             return Response({
                 "success": True,
@@ -180,17 +166,12 @@ class ProductDetailAPIView(APIView):
         cache_key = f"product_detail:{pk}"
         cached_data = cache.get(cache_key)
 
-        # Return cached data if available
         if cached_data:
             return Response({"success": True, "product": cached_data})
 
-        # Fetch product from database
         product = self.get_object(pk)
         serializer = ProductSerializer(product)
-
-        # Cache the product data for 15 minutes
         cache.set(cache_key, serializer.data, timeout=900)
-
         return Response({"success": True, "product": serializer.data})
 
     def patch(self, request, pk):
@@ -208,7 +189,6 @@ class ProductDetailAPIView(APIView):
 
         if serializer.is_valid():
             serializer.save()
-            # Invalidate caches for this product and list views
             cache.delete(f"product_detail:{pk}")
             invalidate_product_caches()
             return Response({
@@ -230,7 +210,6 @@ class ProductDetailAPIView(APIView):
             raise PermissionDenied("Only admin users can delete products")
 
         product.delete()
-        # Invalidate related caches
         cache.delete(f"product_detail:{pk}")
         invalidate_product_caches()
         return Response({
@@ -257,14 +236,12 @@ class ProductImageAPIView(APIView):
                     "error": "No image files provided"
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # Handle main image flag
             main_index = int(request.data.get('main_image_index', 0))
 
             created_images = []
             for index, image in enumerate(images):
                 is_main = (index == main_index)
 
-                # Handle existing main images
                 if is_main:
                     ProductImage.objects.filter(
                         product=product,
@@ -282,8 +259,6 @@ class ProductImageAPIView(APIView):
                 created_images.append(product_image)
 
             serializer = ProductImageSerializer(created_images, many=True)
-
-            # Invalidate product caches after adding images
             cache.delete(f"product_detail:{product_id}")
             invalidate_product_caches()
 
@@ -308,11 +283,3 @@ class ProductImageAPIView(APIView):
                 "success": False,
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def get(self, request, pk):
-        product = self.get_object(pk)
-        serializer = ProductSerializer(product)
-        return Response({
-            "success": True,
-            "product": serializer.data
-        })
