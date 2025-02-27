@@ -21,7 +21,7 @@ class CartDetailView(APIView):
         cached_cart = cache.get(cache_key)
 
         if cached_cart:
-            return Response({"success": True, "cart": cached_cart}, status=status.HTTP_200_OK)
+            return Response({"success": True, "data": cached_cart}, status=status.HTTP_200_OK)
 
         cart, _ = Cart.objects.get_or_create(user=request.user)
         serializer = CartSerializer(cart, context={'request': request})
@@ -29,7 +29,7 @@ class CartDetailView(APIView):
         # Cache the cart data for 5 minutes
         cache.set(cache_key, serializer.data, timeout=300)
 
-        return Response({"success": True, "cart": serializer.data}, status=status.HTTP_200_OK)
+        return Response({"success": True, "data": serializer.data}, status=status.HTTP_200_OK)
 
 
 class AddToCartView(APIView):
@@ -51,9 +51,11 @@ class AddToCartView(APIView):
         if existing_cart_item:
             existing_cart_item.quantity += quantity
             existing_cart_item.save()
+            message = "Item quantity updated in cart."
         else:
             CartItem.objects.create(
                 cart=cart, product=product, quantity=quantity)
+            message = "Item added to cart."
 
         # Invalidate the cart cache
         cache_key = get_cart_cache_key(request.user.id)
@@ -62,8 +64,8 @@ class AddToCartView(APIView):
         cart_serializer = CartSerializer(cart, context={'request': request})
         return Response({
             "success": True,
-            "message": "Item added to cart",
-            "cart": cart_serializer.data
+            "message": message,
+            "data": cart_serializer.data
         }, status=status.HTTP_201_CREATED)
 
 
@@ -90,8 +92,8 @@ class UpdateCartItemView(APIView):
                 cart, context={'request': request})
             return Response({
                 "success": True,
-                "message": "Cart item updated successfully",
-                "cart": cart_serializer.data
+                "message": "Cart item updated successfully.",
+                "data": cart_serializer.data
             }, status=status.HTTP_200_OK)
 
         return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
@@ -116,6 +118,6 @@ class RemoveFromCartView(APIView):
         cart_serializer = CartSerializer(cart, context={'request': request})
         return Response({
             "success": True,
-            "message": "Item removed from cart",
-            "cart": cart_serializer.data
+            "message": "Item removed from cart.",
+            "data": cart_serializer.data
         }, status=status.HTTP_200_OK)

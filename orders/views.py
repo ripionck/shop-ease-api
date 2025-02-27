@@ -23,13 +23,14 @@ class ListOrdersView(APIView):
             return Response({
                 "success": True,
                 "message": message,
-                "orders": []
+                "data": []
             }, status=status.HTTP_200_OK)
 
         serializer = OrderSerializer(orders, many=True)
         return Response({
             "success": True,
-            "orders": serializer.data
+            "message": "Orders retrieved successfully.",
+            "data": serializer.data
         }, status=status.HTTP_200_OK)
 
 
@@ -41,55 +42,63 @@ class CreateOrderView(APIView):
         serializer = OrderSerializer(
             data=request.data, context={'request': request})
 
-        if serializer.is_valid():
-            try:
-                with transaction.atomic():
-                    cart_items = CartItem.objects.filter(cart__user=user)
+        if not serializer.is_valid():
+            return Response({
+                "success": False,
+                "message": "Invalid data provided.",
+                "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-                    if not cart_items.exists():
-                        return Response(
-                            {"detail": "Cart is empty"},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
+        try:
+            with transaction.atomic():
+                cart_items = CartItem.objects.filter(cart__user=user)
 
-                    total_amount = sum(item.product.price *
-                                       item.quantity for item in cart_items)
-                    order = Order.objects.create(
-                        user=user,
-                        total_amount=total_amount,
-                        shipping_address=request.data.get(
-                            'shipping_address', {})
-                    )
+                if not cart_items.exists():
+                    return Response({
+                        "success": False,
+                        "message": "Your cart is empty. Add items to proceed."
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
-                    order_items = [
-                        OrderItem(
-                            order=order,
-                            product=item.product,
-                            quantity=item.quantity,
-                            price=item.product.price
-                        ) for item in cart_items
-                    ]
-                    OrderItem.objects.bulk_create(order_items)
-                    cart_items.delete()
-
-                    return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
-            except Exception as e:
-                return Response(
-                    {"detail": str(e)},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                total_amount = sum(item.product.price *
+                                   item.quantity for item in cart_items)
+                order = Order.objects.create(
+                    user=user,
+                    total_amount=total_amount,
+                    shipping_address=request.data.get('shipping_address', {})
                 )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+                order_items = [
+                    OrderItem(
+                        order=order,
+                        product=item.product,
+                        quantity=item.quantity,
+                        price=item.product.price
+                    ) for item in cart_items
+                ]
+                OrderItem.objects.bulk_create(order_items)
+                cart_items.delete()
+
+                return Response({
+                    "success": True,
+                    "message": "Order created successfully.",
+                    "data": OrderSerializer(order).data
+                }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({
+                "success": False,
+                "message": "An error occurred while creating the order.",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UpdateOrderStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, order_id):
-        # Only admins can update order status
         if request.user.role != 'admin':
             return Response({
                 "success": False,
-                "message": "You don't have permission to perform this action"
+                "message": "You do not have permission to perform this action."
             }, status=status.HTTP_403_FORBIDDEN)
 
         order = get_object_or_404(Order, id=order_id)
@@ -98,15 +107,15 @@ class UpdateOrderStatusView(APIView):
         if not new_status or new_status not in dict(Order.STATUS_CHOICES):
             return Response({
                 "success": False,
-                "message": "Invalid status"
+                "message": "Invalid status provided."
             }, status=status.HTTP_400_BAD_REQUEST)
 
         order.status = new_status
         order.save()
         return Response({
             "success": True,
-            "message": "Order status updated",
-            "order": OrderSerializer(order).data
+            "message": "Order status updated successfully.",
+            "data": OrderSerializer(order).data
         }, status=status.HTTP_200_OK)
 
 
@@ -116,16 +125,16 @@ class TrackOrderView(APIView):
     def get(self, request, order_id):
         order = get_object_or_404(Order, id=order_id)
 
-        # Check permissions
         if request.user.role != 'admin' and order.user != request.user:
             return Response({
                 "success": False,
-                "message": "You don't have permission to view this order"
+                "message": "You do not have permission to view this order."
             }, status=status.HTTP_403_FORBIDDEN)
 
         return Response({
             "success": True,
-            "order": OrderSerializer(order).data
+            "message": "Order details retrieved successfully.",
+            "data": OrderSerializer(order).data
         }, status=status.HTTP_200_OK)
 
 
@@ -135,16 +144,16 @@ class OrderDetailsView(APIView):
     def get(self, request, order_id):
         order = get_object_or_404(Order, id=order_id)
 
-        # Check permissions
         if request.user.role != 'admin' and order.user != request.user:
             return Response({
                 "success": False,
-                "message": "You don't have permission to view this order"
+                "message": "You do not have permission to view this order."
             }, status=status.HTTP_403_FORBIDDEN)
 
         return Response({
             "success": True,
-            "order": OrderSerializer(order).data
+            "message": "Order details retrieved successfully.",
+            "data": OrderSerializer(order).data
         }, status=status.HTTP_200_OK)
 
 
@@ -154,29 +163,28 @@ class CancelOrderView(APIView):
     def patch(self, request, order_id):
         order = get_object_or_404(Order, id=order_id)
 
-        # Check permissions
         if request.user.role != 'admin' and order.user != request.user:
             return Response({
                 "success": False,
-                "message": "You don't have permission to cancel this order"
+                "message": "You do not have permission to cancel this order."
             }, status=status.HTTP_403_FORBIDDEN)
 
         if order.status == 'cancelled':
             return Response({
                 "success": False,
-                "message": "Order is already cancelled"
+                "message": "This order is already cancelled."
             }, status=status.HTTP_400_BAD_REQUEST)
 
         if order.status in ['shipped', 'delivered']:
             return Response({
                 "success": False,
-                "message": "Cannot cancel shipped/delivered orders"
+                "message": "Cannot cancel an order that has already been shipped or delivered."
             }, status=status.HTTP_400_BAD_REQUEST)
 
         order.status = 'cancelled'
         order.save()
         return Response({
             "success": True,
-            "message": "Order cancelled successfully",
-            "order": OrderSerializer(order).data
+            "message": "Order cancelled successfully.",
+            "data": OrderSerializer(order).data
         }, status=status.HTTP_200_OK)

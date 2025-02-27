@@ -11,6 +11,13 @@ class OfferListCreateView(APIView):
 
     def get(self, request):
         offers = Offer.objects.all()
+        if not offers.exists():
+            return Response({
+                'status': 'success',
+                'message': 'No offers found.',
+                'data': []
+            }, status=status.HTTP_200_OK)
+
         serializer = OfferSerializer(offers, many=True)
         return Response({
             'status': 'success',
@@ -29,7 +36,7 @@ class OfferListCreateView(APIView):
             }, status=status.HTTP_201_CREATED)
         return Response({
             'status': 'error',
-            'message': 'Offer creation failed.',
+            'message': 'Invalid data provided. Offer creation failed.',
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
@@ -45,48 +52,51 @@ class OfferDetailView(APIView):
 
     def get(self, request, pk):
         offer = self.get_object(pk)
-        if offer:
-            serializer = OfferSerializer(offer)
+        if not offer:
+            return Response({
+                'status': 'error',
+                'message': 'Offer not found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = OfferSerializer(offer)
+        return Response({
+            'status': 'success',
+            'message': 'Offer retrieved successfully.',
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+
+    def put(self, request, pk):
+        offer = self.get_object(pk)
+        if not offer:
+            return Response({
+                'status': 'error',
+                'message': 'Offer not found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = OfferSerializer(offer, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
             return Response({
                 'status': 'success',
-                'message': 'Offer retrieved successfully.',
+                'message': 'Offer updated successfully.',
                 'data': serializer.data
             }, status=status.HTTP_200_OK)
         return Response({
             'status': 'error',
-            'message': 'Offer not found.'
-        }, status=status.HTTP_404_NOT_FOUND)
-
-    def put(self, request, pk):
-        offer = self.get_object(pk)
-        if offer:
-            serializer = OfferSerializer(offer, data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response({
-                    'status': 'success',
-                    'message': 'Offer updated successfully.',
-                    'data': serializer.data
-                }, status=status.HTTP_200_OK)
-            return Response({
-                'status': 'error',
-                'message': 'Offer update failed.',
-                'errors': serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-        return Response({
-            'status': 'error',
-            'message': 'Offer not found.'
-        }, status=status.HTTP_404_NOT_FOUND)
+            'message': 'Invalid data provided. Offer update failed.',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         offer = self.get_object(pk)
-        if offer:
-            offer.delete()
+        if not offer:
             return Response({
-                'status': 'success',
-                'message': 'Offer deleted successfully.'
-            }, status=status.HTTP_204_NO_CONTENT)
+                'status': 'error',
+                'message': 'Offer not found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        offer.delete()
         return Response({
-            'status': 'error',
-            'message': 'Offer not found.'
-        }, status=status.HTTP_404_NOT_FOUND)
+            'status': 'success',
+            'message': 'Offer deleted successfully.'
+        }, status=status.HTTP_204_NO_CONTENT)

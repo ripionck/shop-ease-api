@@ -16,9 +16,8 @@ class NotificationListCreateView(APIView):
         notifications = Notification.objects.filter(user=request.user)
         serializer = NotificationSerializer(notifications, many=True)
         return Response({
-            'status': 'success',
-            'message': 'Notifications retrieved successfully.',
-            'data': serializer.data
+            "message": "Notifications retrieved successfully",
+            "data": serializer.data
         }, status=status.HTTP_200_OK)
 
     def post(self, request):
@@ -30,14 +29,12 @@ class NotificationListCreateView(APIView):
         if serializer.is_valid():
             serializer.save(user=request.user)
             return Response({
-                'status': 'success',
-                'message': 'Notification created successfully.',
-                'data': serializer.data
+                "message": "Notification created successfully",
+                "data": serializer.data
             }, status=status.HTTP_201_CREATED)
         return Response({
-            'status': 'error',
-            'message': 'Notification creation failed.',
-            'errors': serializer.errors
+            "message": "Invalid input",
+            "errors": serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -46,7 +43,7 @@ class NotificationDetailView(APIView):
 
     def get_object(self, pk, user):
         """
-        Helper method to get a notification by ID and ensure it belongs to the user.
+        Helper method to get a notification by ID and verify ownership.
         """
         try:
             return Notification.objects.get(pk=pk, user=user)
@@ -61,13 +58,11 @@ class NotificationDetailView(APIView):
         if notification:
             serializer = NotificationSerializer(notification)
             return Response({
-                'status': 'success',
-                'message': 'Notification retrieved successfully.',
-                'data': serializer.data
+                "message": "Notification retrieved successfully",
+                "data": serializer.data
             }, status=status.HTTP_200_OK)
         return Response({
-            'status': 'error',
-            'message': 'Notification not found.'
+            "message": "Notification not found"
         }, status=status.HTTP_404_NOT_FOUND)
 
     def put(self, request, pk):
@@ -81,18 +76,15 @@ class NotificationDetailView(APIView):
             if serializer.is_valid():
                 serializer.save()
                 return Response({
-                    'status': 'success',
-                    'message': 'Notification updated successfully.',
-                    'data': serializer.data
+                    "message": "Notification updated successfully",
+                    "data": serializer.data
                 }, status=status.HTTP_200_OK)
             return Response({
-                'status': 'error',
-                'message': 'Notification update failed.',
-                'errors': serializer.errors
+                "message": "Invalid update data",
+                "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
         return Response({
-            'status': 'error',
-            'message': 'Notification not found.'
+            "message": "Notification not found"
         }, status=status.HTTP_404_NOT_FOUND)
 
     def delete(self, request, pk):
@@ -102,11 +94,7 @@ class NotificationDetailView(APIView):
         notification = self.get_object(pk, request.user)
         if notification:
             notification.delete()
-            return Response({
-                'status': 'success',
-                'message': 'Notification deleted successfully.'
-            }, status=status.HTTP_204_NO_CONTENT)
+            return Response(status=status.HTTP_204_NO_CONTENT)
         return Response({
-            'status': 'error',
-            'message': 'Notification not found.'
+            "message": "Notification not found"
         }, status=status.HTTP_404_NOT_FOUND)

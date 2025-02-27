@@ -13,8 +13,20 @@ class UserRegistrationView(APIView):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    "message": "Registration successful.",
+                    "user": serializer.data
+                },
+                status=status.HTTP_201_CREATED
+            )
+        return Response(
+            {
+                "message": "Invalid input.",
+                "errors": serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 class UserLoginView(APIView):
@@ -26,18 +38,26 @@ class UserLoginView(APIView):
             user = serializer.validated_data['user']
             update_last_login(None, user)
 
-            # Include user role in response
+            refresh = RefreshToken.for_user(user)
             user_data = UserSerializer(user).data
 
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                'message': 'Login successful.',
-                'user': user_data,
-                'refresh': str(refresh),
-                'access': str(refresh.access_token)
-            }, status=status.HTTP_200_OK)
+            return Response(
+                {
+                    "message": "Login successful.",
+                    "user": user_data,
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token)
+                },
+                status=status.HTTP_200_OK
+            )
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "message": "Invalid credentials.",
+                "errors": serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 class UserProfileView(APIView):
@@ -45,16 +65,42 @@ class UserProfileView(APIView):
 
     def get(self, request, format=None):
         serializer = UserSerializer(request.user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "message": "Profile retrieved successfully.",
+                "user": serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
 
     def patch(self, request, format=None):
         serializer = UserSerializer(
-            request.user, data=request.data, partial=True)
+            request.user,
+            data=request.data,
+            partial=True
+        )
+
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    "message": "Profile updated successfully.",
+                    "user": serializer.data
+                },
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            {
+                "message": "Update failed. Invalid input.",
+                "errors": serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     def delete(self, request, format=None):
         request.user.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {"message": "Account deleted successfully."},
+            status=status.HTTP_200_OK
+        )
