@@ -7,6 +7,7 @@ from django.db import transaction
 from cart.models import CartItem
 from .models import Order, OrderItem
 from .serializers import OrderSerializer
+from rest_framework.pagination import PageNumberPagination
 
 
 class ListOrdersView(APIView):
@@ -18,20 +19,18 @@ class ListOrdersView(APIView):
         else:
             orders = Order.objects.filter(user=request.user)
 
-        if not orders.exists():
-            message = "No orders found." if request.user.role == 'admin' else "You haven't placed any orders yet."
-            return Response({
-                "success": True,
-                "message": message,
-                "data": []
-            }, status=status.HTTP_200_OK)
+        # Pagination
+        paginator = PageNumberPagination()
+        paginator.page_size = request.query_params.get('page_size', 10)
 
-        serializer = OrderSerializer(orders, many=True)
-        return Response({
+        result_page = paginator.paginate_queryset(orders, request)
+        serializer = OrderSerializer(result_page, many=True)
+
+        return paginator.get_paginated_response({
             "success": True,
             "message": "Orders retrieved successfully.",
             "data": serializer.data
-        }, status=status.HTTP_200_OK)
+        })
 
 
 class CreateOrderView(APIView):
