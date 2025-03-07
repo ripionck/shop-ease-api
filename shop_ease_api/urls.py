@@ -32,12 +32,12 @@ schema_view = get_schema_view(
 )
 
 
-def testing_root(request):
-    return JsonResponse({"message": "Testing root route works."})
+def health_check(request):
+    return JsonResponse({"status": "ok"})
 
 
 urlpatterns = [
-    path('', testing_root, name='testing-root'),
+    path('', health_check, name='health_check'),
 
     # Swagger documentation routes
     path('swagger<format>/', schema_view.without_ui(cache_timeout=0),

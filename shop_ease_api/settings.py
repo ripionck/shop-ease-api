@@ -24,20 +24,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
-ENV = os.environ.get('ENV')
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False if ENV == "PROD" else True
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.environ.get('ALLOWED_HOSTS', '*').split(',')
-    if host.strip()
-]
+DEBUG = False
+ALLOWED_HOSTS = ['*']
 
 CORS_ALLOWED_ORIGINS = [
     "https://shop-ease-rho-wheat.vercel.app",
