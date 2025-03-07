@@ -15,8 +15,6 @@ from datetime import timedelta
 from dotenv import load_dotenv
 from pathlib import Path
 import dj_database_url
-from .keep_alive import ping_server
-ping_server()
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -31,7 +29,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['shop-ease-3oxf.onrender.com', 'localhost', '127.0.0.1']
 
 CORS_ALLOWED_ORIGINS = [
     "https://shop-ease-rho-wheat.vercel.app",
@@ -140,21 +138,24 @@ DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 # }
 
 
-# PostgreSQL database settings
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# PostgreSQL
 DATABASES = {
-    'default': dj_database_url.parse(DATABASE_URL)
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL'),
+        conn_max_age=600,
+        ssl_require=True
+    )
 }
 
-# Resis settings
+# Resis
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1'),
+        "LOCATION": os.getenv('REDIS_URL'),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "SSL": True  # Required for Render Redis
         },
-        "KEY_PREFIX": "shopease"  # Unique prefix for cache keys
     }
 }
 
