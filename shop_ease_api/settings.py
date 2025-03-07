@@ -15,6 +15,8 @@ from datetime import timedelta
 from dotenv import load_dotenv
 from pathlib import Path
 import dj_database_url
+from .keep_alive import ping_server
+ping_server()
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
