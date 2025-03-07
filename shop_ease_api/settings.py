@@ -16,12 +16,13 @@ from dotenv import load_dotenv
 from pathlib import Path
 import dj_database_url
 
-load_dotenv()
-
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(os.path.join(BASE_DIR, '.env'))
+
+ENV = os.environ.get('ENV')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -29,17 +30,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False if ENV == "PROD" else True
 ALLOWED_HOSTS = [
-    '*'
+    host.strip()
+    for host in os.environ.get('ALLOWED_HOSTS', '*').split(',')
+    if host.strip()
 ]
-
-# DEBUG = False
-# ALLOWED_HOSTS = [
-#     'shop-ease-3oxf.onrender.com',
-#     'localhost',
-#     '127.0.0.1',
-# ]
 
 CORS_ALLOWED_ORIGINS = [
     "https://shop-ease-rho-wheat.vercel.app",
@@ -85,7 +81,6 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 AUTH_USER_MODEL = 'users.User'
 
 MIDDLEWARE = [
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -150,17 +145,6 @@ DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 
 # PostgreSQL database settings
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.environ.get('DATABASE_NAME'),
-#         'USER': os.environ.get('DATABASE_USER'),
-#         'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
-#         'HOST': os.environ.get('DATABASE_HOST'),
-#         'PORT': os.environ.get('DATABASE_PORT'),
-#     }
-# }
-
 DATABASE_URL = os.environ.get("DATABASE_URL")
 DATABASES = {
     'default': dj_database_url.parse(DATABASE_URL)
@@ -217,8 +201,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 # Default primary key field type

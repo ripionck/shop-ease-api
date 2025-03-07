@@ -1,0 +1,15 @@
+services:
+  web:
+    build: .
+    container_name: shop-ease-api
+    command: >
+      sh -c "
+      python manage.py migrate &&
+      gunicorn shop_ease_api.wsgi:application -b 0.0.0.0:8000
+      "
+    volumes:
+      - .:/app
+    ports:
+      - '8000:8000'
+    env_file:
+      - .env
