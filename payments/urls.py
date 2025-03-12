@@ -3,9 +3,10 @@ from .views import PaymentView, UpdatePaymentStatusView, stripe_webhook
 
 app_name = 'payments'
 urlpatterns = [
-    path('payments/', PaymentView.as_view(), name='payment-create'),
-    path('payments/<uuid:pk>/', PaymentView.as_view(), name='payment-detail'),
-    path('payments/<uuid:pk>/status/', UpdatePaymentStatusView.as_view(),
-         name='payment-status-update'),
-    path('stripe/webhook/', stripe_webhook, name='stripe-webhook')
+    path('orders/<int:order_id>/payment/',
+         PaymentView.as_view(), name='create_payment'),
+    path('payments/<int:pk>/', PaymentView.as_view(), name='get_payment'),
+    path('payments/<int:pk>/update-status/',
+         UpdatePaymentStatusView.as_view(), name='update_payment'),
+    path('webhook/stripe/', stripe_webhook, name='stripe_webhook'),
 ]

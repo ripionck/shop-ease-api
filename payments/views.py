@@ -25,7 +25,7 @@ class PaymentView(APIView):
 
             # Create Stripe Payment Intent
             intent = stripe.PaymentIntent.create(
-                amount=int(order.total_amount * 100),
+                amount=int(order.total_amount * 100),  # Convert to cents
                 currency="usd",
                 payment_method_types=["card"],
                 metadata={
@@ -41,6 +41,12 @@ class PaymentView(APIView):
                 payment_method='card',
                 transaction_id=intent.id,
                 status='requires_payment_method'
+            )
+
+            # Update metadata to include payment_id
+            stripe.PaymentIntent.modify(
+                intent.id,
+                metadata={"payment_id": str(payment.id)}
             )
 
             return Response({
