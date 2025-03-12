@@ -22,7 +22,7 @@ class WishlistDetailView(APIView):
         return Response(
             {
                 "message": "Wishlist retrieved successfully.",
-                "data": serializer.data
+                "wishlist": serializer.data
             },
             status=status.HTTP_200_OK
         )

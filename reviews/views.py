@@ -18,7 +18,7 @@ class ReviewListView(APIView):
             return Response(
                 {
                     "message": "Reviews retrieved successfully.",
-                    "data": serializer.data
+                    "reviews": serializer.data
                 },
                 status=status.HTTP_200_OK
             )
@@ -50,7 +50,7 @@ class ReviewListView(APIView):
                 return Response(
                     {
                         "message": "Review created successfully!",
-                        "data": serializer.data
+                        "review": serializer.data
                     },
                     status=status.HTTP_201_CREATED
                 )
@@ -87,7 +87,7 @@ class ReviewDetailView(APIView):
             return Response(
                 {
                     "message": "Review retrieved successfully.",
-                    "data": serializer.data
+                    "review": serializer.data
                 },
                 status=status.HTTP_200_OK
             )
@@ -118,7 +118,7 @@ class ReviewDetailView(APIView):
                 return Response(
                     {
                         "message": "Review updated successfully!",
-                        "data": serializer.data
+                        "review": serializer.data
                     },
                     status=status.HTTP_200_OK
                 )
