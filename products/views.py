@@ -12,13 +12,8 @@ from django.db.models import Q
 from core.utils import IsAdminOrReadOnly
 from .models import Product, ProductImage
 from .serializers import ProductSerializer, ProductImageSerializer
+from .filters import ProductFilter
 from rest_framework.pagination import PageNumberPagination
-
-
-class CustomPagination(PageNumberPagination):
-    page_size = 9
-    page_size_query_param = 'page_size'
-    max_page_size = 100
 
 
 def generate_cache_key(base_key, request):
@@ -37,7 +32,6 @@ def invalidate_product_caches():
 class ProductListAPIView(APIView):
     permission_classes = [IsAdminOrReadOnly]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-    pagination_class = CustomPagination
 
     def get(self, request):
         try:
@@ -47,80 +41,44 @@ class ProductListAPIView(APIView):
             if cached_data:
                 return Response(cached_data)
 
-            search_term = request.query_params.get('search', '')
-            category_ids = request.query_params.getlist('category[]')
-            min_price = request.query_params.get('min_price')
-            max_price = request.query_params.get('max_price')
-            rating = request.query_params.get('rating')
-            sort = request.query_params.get('sort')
+            # Adjust query parameters to handle 'category[]'
+            query_params = request.query_params.copy()
+            if 'category[]' in query_params:
+                query_params.setlist(
+                    'category', query_params.getlist('category[]'))
+                del query_params['category[]']
 
+            # Apply filters
             queryset = Product.objects.all()
+            product_filter = ProductFilter(query_params, queryset=queryset)
 
-            if search_term:
-                queryset = queryset.filter(
-                    Q(name__icontains=search_term) |
-                    Q(brand__icontains=search_term) |
-                    Q(category__name__icontains=search_term)
-                )
+            # Validate filters
+            if not product_filter.form.is_valid():
+                errors = {
+                    field: [error.message for error in errors]
+                    for field, errors in product_filter.form.errors.items()
+                }
+                return Response({
+                    "success": False,
+                    "message": "Invalid filters.",
+                    "errors": errors
+                }, status=status.HTTP_400_BAD_REQUEST)
 
-            if category_ids:
-                queryset = queryset.filter(category__id__in=category_ids)
+            filtered_queryset = product_filter.qs
 
-            if min_price:
-                try:
-                    min_price = float(min_price)
-                    queryset = queryset.filter(price__gte=min_price)
-                except ValueError:
-                    return Response({
-                        "success": False,
-                        "message": "Invalid minimum price value."
-                    }, status=status.HTTP_400_BAD_REQUEST)
+            # pagination
+            paginator = PageNumberPagination()
+            paginator.page_size = request.query_params.get('page_size', 10)
 
-            if max_price:
-                try:
-                    max_price = float(max_price)
-                    queryset = queryset.filter(price__lte=max_price)
-                except ValueError:
-                    return Response({
-                        "success": False,
-                        "message": "Invalid maximum price value."
-                    }, status=status.HTTP_400_BAD_REQUEST)
+            result_page = paginator.paginate_queryset(
+                filtered_queryset, request)
+            serializer = ProductSerializer(result_page, many=True)
 
-            if rating:
-                try:
-                    rating_values = [int(r)
-                                     for r in rating.split(',') if r.isdigit()]
-                    if rating_values:
-                        queryset = queryset.filter(rating__in=rating_values)
-                except Exception:
-                    return Response({
-                        "success": False,
-                        "message": "Invalid rating value."
-                    }, status=status.HTTP_400_BAD_REQUEST)
-
-            if sort:
-                if sort == 'price-low-high':
-                    queryset = queryset.order_by('price')
-                elif sort == 'price-high-low':
-                    queryset = queryset.order_by('-price')
-                elif sort == 'rating':
-                    queryset = queryset.order_by('-rating')
-                elif sort == 'featured':
-                    queryset = queryset.order_by('-created_at')
-
-            paginator = self.pagination_class()
-            paginated_queryset = paginator.paginate_queryset(queryset, request)
-            serializer = ProductSerializer(paginated_queryset, many=True)
-
-            response_data = {
+            return paginator.get_paginated_response({
                 "success": True,
                 "message": "Products retrieved successfully.",
-                "products": serializer.data,
-                "count": queryset.count(),
-            }
-
-            cache.set(cache_key, response_data, timeout=900)
-            return paginator.get_paginated_response(response_data)
+                "products": serializer.data
+            })
 
         except Exception as e:
             return Response({

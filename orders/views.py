@@ -29,7 +29,7 @@ class ListOrdersView(APIView):
         return paginator.get_paginated_response({
             "success": True,
             "message": "Orders retrieved successfully.",
-            "data": serializer.data
+            "orders": serializer.data
         })
 
 
@@ -80,7 +80,7 @@ class CreateOrderView(APIView):
                 return Response({
                     "success": True,
                     "message": "Order created successfully.",
-                    "data": OrderSerializer(order).data
+                    "order": OrderSerializer(order).data
                 }, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({
@@ -114,7 +114,7 @@ class UpdateOrderStatusView(APIView):
         return Response({
             "success": True,
             "message": "Order status updated successfully.",
-            "data": OrderSerializer(order).data
+            "order": OrderSerializer(order).data
         }, status=status.HTTP_200_OK)
 
 
@@ -133,7 +133,7 @@ class TrackOrderView(APIView):
         return Response({
             "success": True,
             "message": "Order details retrieved successfully.",
-            "data": OrderSerializer(order).data
+            "order": OrderSerializer(order).data
         }, status=status.HTTP_200_OK)
 
 
@@ -152,7 +152,7 @@ class OrderDetailsView(APIView):
         return Response({
             "success": True,
             "message": "Order details retrieved successfully.",
-            "data": OrderSerializer(order).data
+            "order": OrderSerializer(order).data
         }, status=status.HTTP_200_OK)
 
 
@@ -185,5 +185,5 @@ class CancelOrderView(APIView):
         return Response({
             "success": True,
             "message": "Order cancelled successfully.",
-            "data": OrderSerializer(order).data
+            "order": OrderSerializer(order).data
         }, status=status.HTTP_200_OK)

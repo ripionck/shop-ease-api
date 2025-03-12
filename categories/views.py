@@ -4,6 +4,7 @@ from rest_framework import status
 from .models import Category
 from .serializers import CategorySerializer
 from core.utils import IsAdminOrReadOnly
+from rest_framework.pagination import PageNumberPagination
 
 
 class CategoryListView(APIView):
@@ -11,11 +12,19 @@ class CategoryListView(APIView):
 
     def get(self, request):
         categories = Category.objects.all()
-        serializer = CategorySerializer(categories, many=True)
-        return Response({
+
+        # Pagination
+        paginator = PageNumberPagination()
+        paginator.page_size = request.query_params.get('page_size', 10)
+
+        result_page = paginator.paginate_queryset(categories, request)
+        serializer = CategorySerializer(result_page, many=True)
+
+        return paginator.get_paginated_response({
+            "success": True,
             "message": "Categories retrieved successfully.",
-            "data": serializer.data
-        }, status=status.HTTP_200_OK)
+            "categories": serializer.data
+        })
 
     def post(self, request):
         serializer = CategorySerializer(data=request.data)
@@ -24,7 +33,7 @@ class CategoryListView(APIView):
             return Response(
                 {
                     "message": "Category created successfully.",
-                    "data": serializer.data
+                    "category": serializer.data
                 },
                 status=status.HTTP_201_CREATED
             )
@@ -56,7 +65,7 @@ class CategoryDetailView(APIView):
         serializer = CategorySerializer(category)
         return Response({
             "message": "Category retrieved successfully.",
-            "data": serializer.data
+            "category": serializer.data
         }, status=status.HTTP_200_OK)
 
     def patch(self, request, pk):
@@ -72,7 +81,7 @@ class CategoryDetailView(APIView):
             serializer.save()
             return Response({
                 "message": "Category updated successfully.",
-                "data": serializer.data
+                "category": serializer.data
             }, status=status.HTTP_200_OK)
         return Response(
             {
