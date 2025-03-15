@@ -19,13 +19,7 @@ class WishlistDetailView(APIView):
             )
 
         serializer = WishlistSerializer(wishlist)
-        return Response(
-            {
-                "message": "Wishlist retrieved successfully.",
-                "wishlist": serializer.data
-            },
-            status=status.HTTP_200_OK
-        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class AddToWishlistView(APIView):

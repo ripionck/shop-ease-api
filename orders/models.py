@@ -18,7 +18,8 @@ class Order(models.Model):
                              on_delete=models.CASCADE)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default='pending')
+        max_length=20, choices=STATUS_CHOICES, default='pending'
+    )
     shipping_address = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -33,7 +34,8 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     order = models.ForeignKey(
-        Order, on_delete=models.CASCADE, related_name='items')
+        Order, on_delete=models.CASCADE, related_name='items'
+    )
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)

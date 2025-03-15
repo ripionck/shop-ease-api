@@ -1,12 +1,10 @@
 from django.urls import path
-from .views import PaymentView, UpdatePaymentStatusView, stripe_webhook
+from .views import PaymentAPI, PaymentStatusAPI, StripeWebhook
 
 app_name = 'payments'
 urlpatterns = [
-    path('orders/<int:order_id>/payment/',
-         PaymentView.as_view(), name='create_payment'),
-    path('payments/<int:pk>/', PaymentView.as_view(), name='get_payment'),
-    path('payments/<int:pk>/update-status/',
-         UpdatePaymentStatusView.as_view(), name='update_payment'),
-    path('webhook/stripe/', stripe_webhook, name='stripe_webhook'),
+    path('create-payment/', PaymentAPI.as_view(), name='create-payment'),
+    path('payment-status/<int:payment_id>/',
+         PaymentStatusAPI.as_view(), name='payment-status'),
+    path('webhook/', StripeWebhook.as_view(), name='stripe-webhook'),
 ]

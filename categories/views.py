@@ -20,11 +20,7 @@ class CategoryListView(APIView):
         result_page = paginator.paginate_queryset(categories, request)
         serializer = CategorySerializer(result_page, many=True)
 
-        return paginator.get_paginated_response({
-            "success": True,
-            "message": "Categories retrieved successfully.",
-            "categories": serializer.data
-        })
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
         serializer = CategorySerializer(data=request.data)

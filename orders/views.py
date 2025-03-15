@@ -26,11 +26,7 @@ class ListOrdersView(APIView):
         result_page = paginator.paginate_queryset(orders, request)
         serializer = OrderSerializer(result_page, many=True)
 
-        return paginator.get_paginated_response({
-            "success": True,
-            "message": "Orders retrieved successfully.",
-            "orders": serializer.data
-        })
+        return paginator.get_paginated_response(serializer.data)
 
 
 class CreateOrderView(APIView):

@@ -6,7 +6,9 @@ from .models import Product, Category
 
 class ProductFilter(django_filters.FilterSet):
     search = django_filters.CharFilter(
-        method='custom_search', help_text="Search by name, brand, or category.")
+        method='custom_search',
+        help_text="Search by name, brand, or category."
+    )
     category = django_filters.ModelMultipleChoiceFilter(
         field_name='category__id',
         queryset=Category.objects.all(),
@@ -29,13 +31,13 @@ class ProductFilter(django_filters.FilterSet):
         method='filter_rating',
         help_text="Comma-separated list of ratings to filter by."
     )
-    sort = django_filters.ChoiceFilter(
+    ordering = django_filters.ChoiceFilter(
         method='filter_by_sort',
         choices=[
-            ('price-low-high', 'Price Low to High'),
-            ('price-high-low', 'Price High to Low'),
-            ('rating', 'Rating'),
-            ('featured', 'Featured'),
+            ('price', 'Price Low to High'),
+            ('-price', 'Price High to Low'),
+            ('-rating', 'Rating'),
+            ('-created_at', 'Featured'),
         ],
         help_text="Sort results."
     )
@@ -62,12 +64,4 @@ class ProductFilter(django_filters.FilterSet):
             raise ValidationError("Invalid rating value.")
 
     def filter_by_sort(self, queryset, name, value):
-        if value == 'price-low-high':
-            return queryset.order_by('price')
-        elif value == 'price-high-low':
-            return queryset.order_by('-price')
-        elif value == 'rating':
-            return queryset.order_by('-rating')
-        elif value == 'featured':
-            return queryset.order_by('-created_at')
-        return queryset
+        return queryset.order_by(value)

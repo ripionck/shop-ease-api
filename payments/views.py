@@ -1,170 +1,140 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from orders.models import Order
-from .models import Payment
-from .serializers import PaymentSerializer
-import stripe
 from django.conf import settings
-from django.http import HttpResponse
-from django.views.decorators.csrf import csrf_exempt
-import logging
+import stripe
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
+from .serializers import PaymentMethodSerializer, PaymentSerializer
+from .models import Payment
+from orders.models import Order
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
-logger = logging.getLogger(__name__)
 
 
-class PaymentView(APIView):
-    permission_classes = [IsAuthenticated]
+class PaymentAPI(APIView):
+    serializer_class = PaymentMethodSerializer
 
-    def post(self, request, order_id):
-        """Initiate payment for an order"""
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            order = Order.objects.get(id=order_id, user=request.user)
+            order = get_object_or_404(
+                Order, id=serializer.validated_data['order_id'])
+            payment_method_id = serializer.validated_data['payment_method_id']
 
-            # Create Stripe Payment Intent
-            intent = stripe.PaymentIntent.create(
-                amount=int(order.total_amount * 100),  # Convert to cents
-                currency="usd",
-                payment_method_types=["card"],
-                metadata={
-                    "order_id": str(order.id),
-                    "user_id": str(request.user.id)
-                }
-            )
-
-            # Create payment record
-            payment = Payment.objects.create(
+            # Create or retrieve existing Payment record
+            payment, created = Payment.objects.get_or_create(
                 order=order,
-                amount=order.total_amount,
-                payment_method='card',
-                transaction_id=intent.id,
-                status='requires_payment_method'
-            )
-
-            # Update metadata to include payment_id
-            stripe.PaymentIntent.modify(
-                intent.id,
-                metadata={"payment_id": str(payment.id)}
-            )
-
-            return Response({
-                "message": "Payment initiated successfully",
-                "data": {
-                    "client_secret": intent.client_secret,
-                    "payment_id": payment.id
+                defaults={
+                    'amount': order.total_amount,
+                    'payment_method': 'card',
+                    'status': 'requires_confirmation'
                 }
-            }, status=status.HTTP_201_CREATED)
+            )
 
-        except Order.DoesNotExist:
-            return Response({
-                "message": "Order not found",
-                "error": "order_not_found"
-            }, status=status.HTTP_404_NOT_FOUND)
+            # Create or update Payment Intent
+            if not payment.stripe_payment_intent_id:
+                payment_intent = stripe.PaymentIntent.create(
+                    amount=int(order.total_amount * 100),
+                    currency='usd',
+                    payment_method=payment_method_id,
+                    confirmation_method='manual',
+                    confirm=True,
+                    metadata={
+                        'order_id': str(order.id),
+                        'payment_id': payment.id
+                    }
+                )
+                payment.stripe_payment_intent_id = payment_intent.id
+                payment.save()
+            else:
+                payment_intent = stripe.PaymentIntent.modify(
+                    payment.stripe_payment_intent_id,
+                    payment_method=payment_method_id
+                )
 
-        except Exception as e:
-            logger.error(f"Payment initiation failed: {str(e)}")
-            return Response({
-                "message": "Payment initiation failed",
-                "error": str(e)
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-    def get(self, request, pk):
-        """Retrieve payment details"""
-        try:
-            payment = Payment.objects.get(pk=pk, order__user=request.user)
-            serializer = PaymentSerializer(payment)
-            return Response({
-                "message": "Payment retrieved successfully",
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
-        except Payment.DoesNotExist:
-            return Response({
-                "message": "Payment not found",
-                "error": "payment_not_found"
-            }, status=status.HTTP_404_NOT_FOUND)
-
-
-class UpdatePaymentStatusView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def patch(self, request, pk):
-        """Update payment status"""
-        try:
-            payment = Payment.objects.get(pk=pk)
-
-            # Ensure user can only update their own payments
-            if payment.order.user != request.user:
+            # Handle payment confirmation
+            if payment_intent.status == 'requires_action':
                 return Response({
-                    "message": "Unauthorized access",
-                    "error": "unauthorized"
-                }, status=status.HTTP_403_FORBIDDEN)
-
-            serializer = PaymentSerializer(
-                payment, data=request.data, partial=True)
-
-            if serializer.is_valid():
-                serializer.save()
-                return Response({
-                    "message": "Payment status updated successfully",
-                    "data": serializer.data
+                    'client_secret': payment_intent.client_secret,
+                    'requires_action': True,
+                    'payment_id': payment.id
                 }, status=status.HTTP_200_OK)
 
+            if payment_intent.status == 'succeeded':
+                payment.status = 'completed'
+                payment.transaction_id = payment_intent.id
+                payment.save()
+                return Response(PaymentSerializer(payment).data, status=status.HTTP_200_OK)
+
             return Response({
-                "message": "Invalid data",
-                "errors": serializer.errors
+                'error': f'Unexpected payment status: {payment_intent.status}',
+                'payment_id': payment.id
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        except Payment.DoesNotExist:
-            return Response({
-                "message": "Payment not found",
-                "error": "payment_not_found"
-            }, status=status.HTTP_404_NOT_FOUND)
+        except Order.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
+        except stripe.error.StripeError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@csrf_exempt
-def stripe_webhook(request):
-    payload = request.body
-    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE', '')
-
-    try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
-        )
-    except ValueError:
-        logger.warning("Invalid Stripe webhook payload")
-        return HttpResponse(status=400)
-    except stripe.error.SignatureVerificationError:
-        logger.warning("Invalid Stripe webhook signature")
-        return HttpResponse(status=400)
-
-    payment_intent = event['data'].get('object', {})
-    payment_id = payment_intent.get('metadata', {}).get('payment_id')
-
-    if payment_id:
+class PaymentStatusAPI(APIView):
+    def get(self, request, payment_id):
         try:
-            payment = Payment.objects.get(pk=payment_id)
+            payment = get_object_or_404(Payment, id=payment_id)
+            payment_intent = stripe.PaymentIntent.retrieve(
+                payment.stripe_payment_intent_id
+            ) if payment.stripe_payment_intent_id else None
+
+            # Update status if changed
+            if payment_intent and payment_intent.status != payment.status:
+                payment.status = payment_intent.status
+                payment.save()
+
+            return Response({
+                'payment_id': payment.id,
+                'status': payment.status,
+                'client_secret': payment_intent.client_secret if payment_intent else None,
+                'amount': float(payment.amount),
+                'order_id': payment.order.id
+            })
+
         except Payment.DoesNotExist:
-            logger.error(f"Webhook: Payment {payment_id} not found")
-            return HttpResponse(status=200)
-    else:
-        logger.error("Webhook: Payment ID not found in metadata")
-        return HttpResponse(status=200)
+            return Response({'error': 'Payment not found'}, status=status.HTTP_404_NOT_FOUND)
+        except stripe.error.StripeError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    if event['type'] == 'payment_intent.succeeded':
-        payment.status = 'completed'
-        payment.save()
-        logger.info(f"Payment {payment_id} marked as completed via webhook")
 
-    elif event['type'] == 'payment_intent.payment_failed':
-        payment.status = 'failed'
-        payment.save()
-        logger.warning(f"Payment {payment_id} failed via webhook")
+class StripeWebhook(APIView):
+    def post(self, request):
+        payload = request.body
+        sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+        endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
 
-    elif event['type'] == 'payment_intent.canceled':
-        payment.status = 'canceled'
-        payment.save()
-        logger.info(f"Payment {payment_id} canceled via webhook")
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, endpoint_secret
+            )
+        except ValueError as e:
+            return Response({'error': 'Invalid payload'}, status=400)
+        except stripe.error.SignatureVerificationError as e:
+            return Response({'error': 'Invalid signature'}, status=400)
 
-    return HttpResponse(status=200)
+        if event['type'] == 'payment_intent.succeeded':
+            payment_intent = event['data']['object']
+            try:
+                payment = Payment.objects.get(
+                    stripe_payment_intent_id=payment_intent['id']
+                )
+                payment.status = 'completed'
+                payment.transaction_id = payment_intent['id']
+                payment.save()
+            except Payment.DoesNotExist:
+                pass
+
+        return Response({'status': 'success'}, status=200)

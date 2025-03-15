@@ -41,18 +41,27 @@ class ProductListAPIView(APIView):
             if cached_data:
                 return Response(cached_data)
 
-            # Adjust query parameters to handle 'category[]'
             query_params = request.query_params.copy()
+
+            # Handle category parameters
             if 'category[]' in query_params:
-                query_params.setlist(
-                    'category', query_params.getlist('category[]'))
+                categories = [
+                    c for c in query_params.getlist('category[]') if c]
+                if categories:
+                    query_params.setlist('category', categories)
                 del query_params['category[]']
+
+            # Remove empty values and unrecognized parameters
+            allowed_params = ['search', 'category', 'min_price',
+                              'max_price', 'rating', 'ordering', 'page', 'page_size']
+            for param in list(query_params.keys()):
+                if param not in allowed_params or not query_params.get(param):
+                    del query_params[param]
 
             # Apply filters
             queryset = Product.objects.all()
             product_filter = ProductFilter(query_params, queryset=queryset)
 
-            # Validate filters
             if not product_filter.form.is_valid():
                 errors = {
                     field: [error.message for error in errors]
@@ -66,19 +75,17 @@ class ProductListAPIView(APIView):
 
             filtered_queryset = product_filter.qs
 
-            # pagination
+            # Pagination
             paginator = PageNumberPagination()
             paginator.page_size = request.query_params.get('page_size', 10)
-
             result_page = paginator.paginate_queryset(
                 filtered_queryset, request)
             serializer = ProductSerializer(result_page, many=True)
 
-            return paginator.get_paginated_response({
-                "success": True,
-                "message": "Products retrieved successfully.",
-                "products": serializer.data
-            })
+            response_data = serializer.data
+
+            cache.set(cache_key, response_data, timeout=900)
+            return paginator.get_paginated_response(response_data)
 
         except Exception as e:
             return Response({
